@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { dot, initialSolids, length, normalizedPoints, position, scale, sub, transition } from "../src/geometry.ts";
 import type { Solid, Vec } from "../src/geometry.ts";
-import { defaults, renderSVG } from "../src/svg.ts";
+import { renderSVG } from "../src/svg.ts";
+import { referenceOptions as defaults } from "./fixtures.ts";
 
 function samePoints(a: Vec[], b: Vec[], tolerance = 1e-7): void {
   for (const v of a) assert.ok(b.some(w => length(sub(v, w)) < tolerance), `Missing vertex ${v}`);

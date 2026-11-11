@@ -55,7 +55,7 @@ export function hull(vertices: Vec[]): Solid {
   return { vertices, faces };
 }
 
-export function initialSolids(): { id: string; title: string; color: number; solid: Solid }[] {
+export function initialSolids(): { id: string; title: string; solid: Solid }[] {
   const tetra: Vec[] = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]];
   const cube: Vec[] = [];
   for (const x of [-1, 1]) for (const y of [-1, 1]) for (const z of [-1, 1]) cube.push([x, y, z]);
@@ -65,9 +65,9 @@ export function initialSolids(): { id: string; title: string; color: number; sol
     dodeca.push([0, a / phi, b * phi], [a / phi, b * phi, 0], [b * phi, 0, a / phi]);
   }
   return [
-    { id: "tetrahedron", title: "正四面体 ↔ 对偶正四面体", color: 163, vertices: tetra },
-    { id: "cube-octahedron", title: "立方体 ↔ 正八面体", color: 209, vertices: cube },
-    { id: "dodecahedron-icosahedron", title: "正十二面体 ↔ 正二十面体", color: 33, vertices: dodeca },
+    { id: "tetrahedron", title: "正四面体 ↔ 对偶正四面体", vertices: tetra },
+    { id: "cube-octahedron", title: "立方体 ↔ 正八面体", vertices: cube },
+    { id: "dodecahedron-icosahedron", title: "正十二面体 ↔ 正二十面体", vertices: dodeca },
   ].map(({ vertices, ...meta }) => ({ ...meta, solid: hull(vertices.map(unit)) }));
 }
 

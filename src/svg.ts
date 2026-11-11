@@ -1,17 +1,11 @@
 import { cross, dot, initialSolids, normalizedPoints, transition, unit } from "./geometry.ts";
 import type { Stage, Vec } from "./geometry.ts";
+import type { Options } from "./config.ts";
 
-export type Options = { seconds: number; hold: number; samples: number; size: number };
-export const defaults: Options = { seconds: 5, hold: 0.8, samples: 60, size: 640 };
-// This oblique view exposes at least two faces of both tetrahedron endpoints.
-const view = unit([4, 1.5, 2]);
-const right = unit(cross([0, 1, 0], view));
-const up = cross(view, right);
-const light = unit([-3, 5, 6]);
 const fmt = (n: number): string => Number(n.toFixed(5)).toString();
 const xml = (s: string): string => s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;");
 
-function path(points: Vec[], indices: number[]): string {
+function path(points: Vec[], indices: number[], right: Vec, up: Vec): string {
   return indices.map((i, n) => `${n ? "L" : "M"}${fmt(320 + 225 * dot(points[i], right))},${fmt(325 - 225 * dot(points[i], up))}`).join(" ") + " Z";
 }
 
@@ -20,11 +14,13 @@ function visibility(start: number, end: number, duration: number): string {
   if (start > 0) { times.push(start); values.push("visible"); }
   if (end < 1) { times.push(end); values.push("hidden"); }
   times.push(1); values.push(values[values.length - 1]);
-  return `<animate attributeName="visibility" calcMode="discrete" values="${values.join(";")}" keyTimes="${times.map(fmt).join(";")}" dur="${fmt(duration)}s" repeatCount="indefinite"/>`;
+  return `<animate attributeName="visibility" calcMode="discrete" values="${values.join(";")}" keyTimes="${times.join(";")}" dur="${duration}s" repeatCount="indefinite"/>`;
 }
 
-function stageSVG(stage: Stage, half: number, first: boolean, hue: number, options: Options): string {
+function stageSVG(stage: Stage, half: number, first: boolean, options: Options): string {
   const { hold, seconds, samples } = options;
+  const view = unit(options.view), light = unit(options.light);
+  const right = unit(cross([0, 1, 0], view)), up = cross(view, right);
   const halfDuration = hold + seconds, duration = 2 * halfDuration;
   const cutStart = (half * halfDuration + hold + seconds * stage.start) / duration;
   const cutEnd = (half * halfDuration + hold + seconds * stage.end) / duration;
@@ -38,15 +34,18 @@ function stageSVG(stage: Stage, half: number, first: boolean, hue: number, optio
     frames.push(normalizedPoints(stage, stage.start + (stage.end - stage.start) * u));
   }
   if (cutEnd < 1) { times.push(1); frames.push(frames[frames.length - 1]); }
+  if (times.some((t, i) => i > 0 && t <= times[i - 1])) {
+    throw new Error("切割时长、端点停留时长或采样数的比例过于极端，无法生成有效时间序列");
+  }
   // For a convex solid in orthographic projection, outward faces pointing at
   // the viewer cover exactly the visible surface; rear faces are omitted.
   const faces = stage.faces.filter(f => dot(f.normal, view) > 1e-8);
   const paths = faces.map(f => {
     const brightness = 43 + 30 * Math.max(0, dot(f.normal, light));
-    const ds = frames.map(points => path(points, f.vertices));
-    return `<path d="${ds[0]}" fill="hsl(${hue},58%,${fmt(brightness)}%)"><animate attributeName="d" values="${ds.join(";")}" keyTimes="${times.map(fmt).join(";")}" calcMode="linear" dur="${fmt(duration)}s" repeatCount="indefinite"/></path>`;
+    const ds = frames.map(points => path(points, f.vertices, right, up));
+    return `<path d="${ds[0]}" fill="hsl(${options.hue},${options.saturation}%,${fmt(brightness)}%)"><animate attributeName="d" values="${ds.join(";")}" keyTimes="${times.join(";")}" calcMode="linear" dur="${duration}s" repeatCount="indefinite"/></path>`;
   });
-  return `<g visibility="${first ? "visible" : "hidden"}" stroke="#142c3a" stroke-width="1.25" stroke-linejoin="round">${visibility(visibleStart, cutEnd, duration)}\n${paths.join("\n")}\n</g>`;
+  return `<g visibility="${first ? "visible" : "hidden"}" stroke="${xml(options.stroke)}" stroke-width="${options.strokeWidth}" stroke-linejoin="round">${visibility(visibleStart, cutEnd, duration)}\n${paths.join("\n")}\n</g>`;
 }
 
 export function renderSVG(item: ReturnType<typeof initialSolids>[number], options: Options): string {
@@ -54,12 +53,12 @@ export function renderSVG(item: ReturnType<typeof initialSolids>[number], option
   // Compute the return cut from new vertices, rather than reversing frames.
   const backward = transition(forward.target);
   const phases = [forward, backward].flatMap((tr, half) => tr.stages.map((stage, i) =>
-    stageSVG(stage, half, half === 0 && i === 0, item.color, options)));
+    stageSVG(stage, half, half === 0 && i === 0, options)));
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${options.size}" height="${options.size}" viewBox="0 0 640 640" role="img" aria-labelledby="title desc">
 <title id="title">${xml(item.title)}</title>
 <desc id="desc">所有顶点的切割平面同时等速向中心移动，到达对偶正多面体后重新切割。固定正交视角，外接球半径恒定。周期 ${fmt(2 * (options.seconds + options.hold))} 秒。</desc>
-<rect width="640" height="640" rx="24" fill="#f5f8fb"/>
+<rect width="640" height="640" rx="24" fill="${xml(options.background)}"/>
 <g font-family="system-ui, sans-serif" text-anchor="middle" fill="#173145">
 <text x="320" y="48" font-size="23" font-weight="600">${xml(item.title)}</text>
 <text x="320" y="77" font-size="13" fill="#526a7c">DUALITY OF REGULAR POLYHEDRA</text>
