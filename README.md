@@ -20,6 +20,8 @@ npm run generate
 
 默认每次切割 5 秒，每个端点停留 0.8 秒，完整往返周期为 11.6 秒。物体同时绕竖直轴匀速旋转，每个往返周期转一圈；端点停留时只暂停切割，旋转继续。两次切割后形状、尺寸和朝向均恢复。
 
+SVG 画面只包含多面体，没有可见文字或背景图层，背景始终透明。动画自动无限循环播放，所有几何、遮挡和光照动画共用相同周期。文件保留不可见的 `<title>`、`<desc>`，供辅助阅读器使用。
+
 ## 参数
 
 默认读取当前工作目录的 [polydual.config.json](polydual.config.json)。修改它后重新运行生成命令即可生效。
@@ -37,7 +39,10 @@ npm run generate
   "enabled": true,
   "seconds": 8,
   "view": [3, 2, 4],
-  "hue": 280
+  "colors": {
+    "light": { "fill": "#bb80df" },
+    "dark": { "fill": "#dfb2ff" }
+  }
 }
 ```
 
@@ -51,18 +56,25 @@ npm run generate
 | `size` | SVG 宽高像素，正整数 | `640` |
 | `view` | 从中心指向观察者的方向向量，固定正交投影 | `[4, 1.5, 2]` |
 | `light` | 从中心指向光源的方向向量 | `[-3, 5, 6]` |
-| `hue` | 面颜色的 HSL 色相，范围 0–360 | 公共值 `209`；三组分别覆盖为 `163`、`209`、`33` |
-| `saturation` | 面颜色的饱和度，范围 0–100 | `58` |
-| `background` | 背景颜色 | `"#f5f8fb"` |
-| `stroke` | 棱线颜色 | `"#142c3a"` |
+| `colors.mode` | 配色模式：`auto`、`light` 或 `dark` | `"auto"` |
+| `colors.light.fill` | 浅色主题下多面体的基色 | `"#7db8e0"` |
+| `colors.light.stroke` | 浅色主题下的棱线色 | `"#243746"` |
+| `colors.dark.fill` | 深色主题下多面体的基色 | `"#91cbf2"` |
+| `colors.dark.stroke` | 深色主题下的棱线色 | `"#d6e8f5"` |
 | `strokeWidth` | 棱线宽度，不小于 0，使用内部画布单位 | `1.25` |
 | `rotation.enabled` | 是否开启整体旋转，布尔值 | `true` |
 | `rotation.axis` | 经过中心的旋转轴，非零三维向量 | `[0, 1, 0]` |
 | `rotation.turns` | 每个完整往返周期旋转的圈数，非零整数；负数反转方向 | `1` |
 
-`view`、`light` 均为非零三维向量，长度不影响效果。画面竖直方向参考世界坐标的 Y 轴，因此 `view` 不能与 `[0, 1, 0]` 平行。颜色支持 `#RGB`、`#RGBA`、`#RRGGBB`、`#RRGGBBAA` 和 `transparent`。
+`view`、`light` 均为非零三维向量，长度不影响效果。画面竖直方向参考世界坐标的 Y 轴，因此 `view` 不能与 `[0, 1, 0]` 平行。多面体和棱线颜色支持不透明的 `#RGB`、`#RRGGBB`，以保持实体表面和遮挡关系。
 
-尺寸调整保持内部 640 × 640 画布的比例，图形和文字一起缩放。`view` 控制固定相机的观察方向，`rotation` 控制物体在世界坐标中的整体旋转，`light` 控制世界坐标中固定的光照。
+`colors.mode: "auto"` 使用 SVG 内部的 `prefers-color-scheme` 媒体查询选择配色，直接打开时跟随系统或浏览器明暗偏好；通过 `<img>` 嵌入时可跟随宿主的 `color-scheme`。它不读取周围背景的像素颜色；需要为指定背景固定配色时，将 `mode` 设为 `light` 或 `dark`。参见 [MDN 的 SVG 主题继承说明](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@media/prefers-color-scheme#embedded_elements)。
+
+每组动画可只覆盖需要修改的颜色子字段，其余继承 `defaults.colors`。随附配置中四面体使用绿色、立方体与八面体使用蓝色、十二面体与二十面体使用金色，每组均包含明暗两套配色。旋转产生的光照通过独立的阴影层表现，不覆盖主题基色。
+
+配色配置替代了原来的 `hue`、`saturation` 和 `stroke` 字段；背景固定透明，不再使用 `background` 字段。
+
+尺寸调整保持内部 640 × 640 画布的比例。`view` 控制固定相机的观察方向，`rotation` 控制物体在世界坐标中的整体旋转，`light` 控制世界坐标中固定的光照。
 
 旋转配置位于 `defaults.rotation`，例如：
 
@@ -116,6 +128,6 @@ npm run generate -- --out output --seconds 6 --hold 1 --samples 60 --size 800
 npm test
 ```
 
-检查三组往返变换的顶点与面数量、棱长、欧拉关系、切割半空间约束、面共面性、半径归一化、分段衔接、循环朝向，以及 SMIL 路径格式和时间序列。还检查旋转方向、刚体距离、正反转的轮廓切换、旋转后的投影、背面隐藏、动态光照和暂停切割期间的旋转。
+检查三组往返变换的顶点与面数量、棱长、欧拉关系、切割半空间约束、面共面性、半径归一化、分段衔接、循环朝向，以及 SMIL 路径格式、时间序列和统一无限循环设置。还检查旋转方向、刚体距离、正反转的轮廓切换、旋转后的投影、背面隐藏、动态光照、暂停切割期间的旋转、配色继承、主题规则，以及可见文字和背景图层的移除。
 
 源码：`src/config.ts` 负责配置加载与校验，`src/geometry.ts` 负责切割几何，`src/motion.ts` 负责旋转与轮廓事件，`src/svg.ts` 负责投影与动画，`src/generate.ts` 提供命令行入口。

@@ -21,7 +21,7 @@ test("config: common settings, animation overrides, CLI precedence and path base
   const dir = await temporary(t), file = resolve(dir, "settings.json");
   const config = referenceConfig();
   config.defaults.seconds = 6;
-  Object.assign(config.animations.tetrahedron, { seconds: 8, view: [3, 2, 4], rotation: { enabled: true } });
+  Object.assign(config.animations.tetrahedron, { seconds: 8, view: [3, 2, 4], rotation: { enabled: true }, colors: { dark: { fill: "#ffcc00" } } });
   config.animations["dodecahedron-icosahedron"].enabled = false;
   await writeFile(file, JSON.stringify(config));
   const loaded = await loadConfig(file);
@@ -32,6 +32,9 @@ test("config: common settings, animation overrides, CLI precedence and path base
   assert.deepEqual(loaded.jobs[0].options.view, [3, 2, 4]);
   assert.deepEqual(loaded.jobs[1].options.view, config.defaults.view);
   assert.deepEqual(loaded.jobs[0].options.rotation, { enabled: true, axis: [0, 1, 0], turns: 1 });
+  assert.equal(loaded.jobs[0].options.colors.dark.fill, "#ffcc00");
+  assert.equal(loaded.jobs[0].options.colors.dark.stroke, config.defaults.colors.dark.stroke);
+  assert.deepEqual(loaded.jobs[0].options.colors.light, config.defaults.colors.light);
   const cli = await loadConfig(file, { seconds: 9, size: 800 }, "relative-cli-output");
   assert.equal(cli.directory, resolve("relative-cli-output"));
   assert.ok(cli.jobs.every(j => j.options.seconds === 9 && j.options.size === 800));
@@ -53,8 +56,11 @@ test("config: missing, malformed and invalid settings fail clearly", async t => 
     ["zero view", c => c.defaults.view = [0, 0, 0], /非零向量/],
     ["parallel view", c => c.defaults.view = [0, 2, 0], /不能与竖直方向/],
     ["zero light", c => c.defaults.light = [0, 0, 0], /非零向量/],
-    ["bad color", c => c.defaults.background = "url(remote.svg)", /十六进制颜色/],
-    ["bad disabled entry", c => Object.assign(c.animations.tetrahedron, { enabled: false, hue: 999 }), /hue 必须在/],
+    ["bad color", c => c.defaults.colors.light.fill = "url(remote.svg)", /十六进制颜色/],
+    ["bad disabled entry", c => Object.assign(c.animations.tetrahedron, { enabled: false, colors: { dark: { fill: "invalid" } } }), /十六进制颜色/],
+    ["bad theme mode", c => c.defaults.colors.mode = "automatic", /mode 必须是/],
+    ["missing dark palette", c => delete c.defaults.colors.dark, /colors.dark 必须是对象/],
+    ["unknown palette key", c => c.defaults.colors.light.fil = "#fff", /fil 是未知配置项/],
     ["invalid default masked by override", c => c.defaults.seconds = "5", /seconds 必须是有限数值/],
     ["zero rotation axis", c => c.defaults.rotation.axis = [0, 0, 0], /rotation.axis.*非零向量/],
     ["nonclosing rotation", c => c.defaults.rotation.turns = 0.5, /turns 必须是非零整数/],
@@ -82,16 +88,31 @@ test("config: custom view, lighting and styling reach the generated SVG", () => 
   const baseline = renderSVG(item, referenceOptions);
   const styled = renderSVG(item, {
     ...referenceOptions, size: 800, view: [3, 2, 4], light: [3, -5, -6],
-    hue: 300, saturation: 25, background: "transparent", stroke: "#abc", strokeWidth: 2,
+    colors: { ...referenceOptions.colors, mode: "dark", dark: { fill: "#e07be0", stroke: "#abc" } }, strokeWidth: 2,
   });
   assert.match(styled, /width="800" height="800"/);
-  assert.match(styled, /rx="24" fill="transparent"/);
-  assert.match(styled, /stroke="#abc" stroke-width="2"/);
-  assert.match(styled, /hsl\(300,25%,/);
+  assert.doesNotMatch(styled, /<rect\b|<text\b|<foreignObject\b/);
+  assert.match(styled, /color:#e07be0;stroke:#abc/);
+  assert.match(styled, /stroke-width="2"/);
+  assert.doesNotMatch(styled, /prefers-color-scheme/);
   assert.notEqual(styled.match(/<path d="([^"]*)"/)![1], baseline.match(/<path d="([^"]*)"/)![1]);
   const relit = renderSVG(item, { ...referenceOptions, light: [3, -5, -6] });
-  const fills = (svg: string) => [...svg.matchAll(/fill="(hsl\([^"]*\))"/g)].map(m => m[1]);
-  assert.notDeepEqual(fills(relit), fills(baseline));
+  const shading = (svg: string) => [...svg.matchAll(/attributeName="opacity" values="([^"]*)"/g)].map(m => m[1]);
+  assert.notDeepEqual(shading(relit), shading(baseline));
+});
+
+test("SVG: auto colors follow media preference, forced themes use their configured palettes", () => {
+  const item = initialSolids()[0];
+  const auto = renderSVG(item, referenceOptions);
+  assert.match(auto, /@media \(prefers-color-scheme: dark\)/);
+  assert.match(auto, /color:#7db8e0;stroke:#243746/);
+  assert.match(auto, /color:#91cbf2;stroke:#d6e8f5/);
+  assert.match(auto, /fill="currentColor"/);
+  for (const mode of ["light", "dark"] as const) {
+    const svg = renderSVG(item, { ...referenceOptions, colors: { ...referenceOptions.colors, mode } });
+    assert.doesNotMatch(svg, /@media/);
+    assert.ok(svg.includes(`color:${referenceOptions.colors[mode].fill};stroke:${referenceOptions.colors[mode].stroke}`));
+  }
 });
 
 test("CLI: custom config generates only enabled files and rejects invalid config before output", async t => {

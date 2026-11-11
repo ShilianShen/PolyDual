@@ -89,6 +89,9 @@ for (const [index, item] of initialSolids().entries()) {
         const attrs = Object.fromEntries([...match[1].matchAll(/([\w-]+)="([^"]*)"/g)].map(m => [m[1], m[2]]));
         const times = attrs.keyTimes.split(";").map(Number);
         const values = attrs.values.split(";");
+        assert.equal(attrs.repeatCount, "indefinite");
+        assert.equal(attrs.begin, "0s");
+        assert.equal(attrs.dur, `${2 * (options.seconds + options.hold)}s`);
         assert.equal(times.length, values.length);
         assert.equal(times[0], 0); assert.equal(times.at(-1), 1);
         assert.ok(times.every((t, i) => i === 0 || t > times[i - 1]));

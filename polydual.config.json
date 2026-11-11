@@ -7,10 +7,11 @@
     "size": 640,
     "view": [4, 1.5, 2],
     "light": [-3, 5, 6],
-    "hue": 209,
-    "saturation": 58,
-    "background": "#f5f8fb",
-    "stroke": "#142c3a",
+    "colors": {
+      "mode": "auto",
+      "light": { "fill": "#7db8e0", "stroke": "#243746" },
+      "dark": { "fill": "#91cbf2", "stroke": "#d6e8f5" }
+    },
     "strokeWidth": 1.25,
     "rotation": {
       "enabled": true,
@@ -21,15 +22,20 @@
   "animations": {
     "tetrahedron": {
       "enabled": true,
-      "hue": 163
+      "colors": {
+        "light": { "fill": "#59cbb0" },
+        "dark": { "fill": "#7ce8ce" }
+      }
     },
     "cube-octahedron": {
-      "enabled": true,
-      "hue": 209
+      "enabled": true
     },
     "dodecahedron-icosahedron": {
       "enabled": true,
-      "hue": 33
+      "colors": {
+        "light": { "fill": "#e4b56e" },
+        "dark": { "fill": "#f6cd8d" }
+      }
     }
   }
 }

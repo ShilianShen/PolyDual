@@ -72,7 +72,7 @@ for (const item of initialSolids()) {
         const facing = dot(rotate(face.normal, options.rotation, t), view);
         if (Math.abs(facing) > 1e-7) assert.equal(track(path, "visibility", t), facing > 0 ? "visible" : "hidden");
         if (track(path, "visibility", t) === "visible") visible++;
-        const expected = face.vertices.flatMap(n => [320 + 225 * dot(points[n], right), 325 - 225 * dot(points[n], up)]);
+        const expected = face.vertices.flatMap(n => [320 + 225 * dot(points[n], right), 320 - 225 * dot(points[n], up)]);
         const actual = track(path, "d", t).split(",").map(Number);
         assert.equal(actual.length, expected.length);
         assert.ok(actual.every((v, n) => Math.abs(v - expected[n]) < 0.05), `Projected geometry at t=${t}`);
@@ -82,6 +82,7 @@ for (const item of initialSolids()) {
     const firstPaths = [...groups[0].matchAll(/<path\b[^>]*>(.*?)<\/path>/gs)].map(m => m[1]);
     const firstPath = firstPaths[0];
     assert.notEqual(track(firstPath, "d", 0), track(firstPath, "d", options.hold / duration / 2), "Rotation continues during a cutting hold");
-    assert.ok(firstPaths.some(p => track(p, "fill", 0) !== track(p, "fill", 0.1)), "World-fixed light changes face brightness");
+    const shades = [...groups[0].matchAll(/<use\b[^>]*>(.*?)<\/use>/gs)].map(m => m[1]);
+    assert.ok(shades.some(p => track(p, "opacity", 0) !== track(p, "opacity", 0.1)), "World-fixed light changes face brightness");
   });
 }

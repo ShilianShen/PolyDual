@@ -7,7 +7,7 @@ const fmt = (n: number): string => Number(n.toFixed(5)).toString();
 const xml = (s: string): string => s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;");
 
 function path(points: Vec[], indices: number[], right: Vec, up: Vec): string {
-  return indices.map((i, n) => `${n ? "L" : "M"}${fmt(320 + 225 * dot(points[i], right))},${fmt(325 - 225 * dot(points[i], up))}`).join(" ") + " Z";
+  return indices.map((i, n) => `${n ? "L" : "M"}${fmt(320 + 225 * dot(points[i], right))},${fmt(320 - 225 * dot(points[i], up))}`).join(" ") + " Z";
 }
 
 function display(start: number, end: number, duration: number): string {
@@ -19,7 +19,7 @@ function display(start: number, end: number, duration: number): string {
 }
 
 function animation(attribute: string, values: string[], times: number[], duration: number, mode = "linear"): string {
-  return `<animate attributeName="${attribute}" values="${values.join(";")}" keyTimes="${times.join(";")}" calcMode="${mode}" dur="${duration}s" repeatCount="indefinite"/>`;
+  return `<animate attributeName="${attribute}" values="${values.join(";")}" keyTimes="${times.join(";")}" calcMode="${mode}" begin="0s" dur="${duration}s" repeatCount="indefinite"/>`;
 }
 
 function facing(normal: Vec, view: Vec, options: Options): { initial: string; animation: string } {
@@ -31,7 +31,7 @@ function facing(normal: Vec, view: Vec, options: Options): { initial: string; an
   return { initial: values[0], animation: animation("visibility", values, times, 2 * (options.hold + options.seconds), "discrete") };
 }
 
-function stageSVG(stage: Stage, half: number, first: boolean, options: Options): string {
+function stageSVG(stage: Stage, half: number, first: boolean, options: Options, prefix: string): string {
   const { hold, seconds, samples } = options;
   const view = unit(options.view), light = unit(options.light);
   const right = unit(cross([0, 1, 0], view)), up = cross(view, right);
@@ -61,18 +61,20 @@ function stageSVG(stage: Stage, half: number, first: boolean, options: Options):
   // For a convex solid in orthographic projection, outward faces pointing at
   // the viewer cover exactly the visible surface; rear faces are omitted.
   const faces = stage.faces;
-  const paths = faces.map(f => {
-    const colors = times.map(time => {
+  const paths = faces.map((f, faceIndex) => {
+    const shades = times.map(time => {
       const t = Math.max(visibleStart, Math.min(cutEnd, time));
-      const brightness = 43 + 30 * Math.max(0, dot(rotate(f.normal, options.rotation, t), light));
-      return `hsl(${options.hue},${options.saturation}%,${fmt(brightness)}%)`;
+      return fmt(0.1 + 0.35 * (1 - Math.max(0, dot(rotate(f.normal, options.rotation, t), light))));
     });
     const ds = frames.map(points => path(points, f.vertices, right, up));
     const visibility = facing(f.normal, view, options);
-    return `<path d="${ds[0]}" fill="${colors[0]}" visibility="${visibility.initial}">${animation("d", ds, times, duration)}${animation("fill", colors, times, duration)}${visibility.animation}</path>`;
+    const id = `${prefix}-face-${faceIndex}`;
+    // Inherited fill lets the base path use the theme color while its instance
+    // supplies a black lighting layer. Both share the same animated geometry.
+    return `<path d="${ds[0]}" id="${id}" visibility="${visibility.initial}">${animation("d", ds, times, duration)}${visibility.animation}</path><use href="#${id}" fill="#000" stroke="none" opacity="${shades[0]}">${animation("opacity", shades, times, duration)}</use>`;
   });
   // display:none suppresses descendants even if their own visibility is visible.
-  return `<g display="${first ? "inline" : "none"}" stroke="${xml(options.stroke)}" stroke-width="${options.strokeWidth}" stroke-linejoin="round">${display(visibleStart, cutEnd, duration)}\n${paths.join("\n")}\n</g>`;
+  return `<g display="${first ? "inline" : "none"}" class="polydual-mesh" fill="currentColor" stroke-width="${options.strokeWidth}" stroke-linejoin="round">${display(visibleStart, cutEnd, duration)}\n${paths.join("\n")}\n</g>`;
 }
 
 export function renderSVG(item: ReturnType<typeof initialSolids>[number], options: Options): string {
@@ -80,21 +82,18 @@ export function renderSVG(item: ReturnType<typeof initialSolids>[number], option
   // Compute the return cut from new vertices, rather than reversing frames.
   const backward = transition(forward.target);
   const phases = [forward, backward].flatMap((tr, half) => tr.stages.map((stage, i) =>
-    stageSVG(stage, half, half === 0 && i === 0, options)));
+    stageSVG(stage, half, half === 0 && i === 0, options, `${item.id}-${half}-${i}`)));
+  const selector = `.polydual-${item.id} .polydual-mesh`;
+  const rule = (theme: "light" | "dark") => `${selector}{color:${options.colors[theme].fill};stroke:${options.colors[theme].stroke}}`;
+  const styles = options.colors.mode === "auto"
+    ? `${rule("light")}\n@media (prefers-color-scheme: dark){${rule("dark")}}`
+    : rule(options.colors.mode);
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${options.size}" height="${options.size}" viewBox="0 0 640 640" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" class="polydual-${item.id}" width="${options.size}" height="${options.size}" viewBox="0 0 640 640" role="img" aria-labelledby="title desc">
 <title id="title">${xml(item.title)}</title>
 <desc id="desc">所有顶点的切割平面同时等速向中心移动，到达对偶正多面体后重新切割。相机采用固定正交视角，${options.rotation.enabled ? `物体每周期绕轴 [${options.rotation.axis.join(", ")}] 旋转 ${options.rotation.turns} 圈，` : ""}外接球半径恒定。周期 ${fmt(2 * (options.seconds + options.hold))} 秒。</desc>
-<rect width="640" height="640" rx="24" fill="${xml(options.background)}"/>
-<g font-family="system-ui, sans-serif" text-anchor="middle" fill="#173145">
-<text x="320" y="48" font-size="23" font-weight="600">${xml(item.title)}</text>
-<text x="320" y="77" font-size="13" fill="#526a7c">DUALITY OF REGULAR POLYHEDRA</text>
-</g>
+<style>${styles}</style>
 ${phases.join("\n")}
-<g font-family="system-ui, sans-serif" text-anchor="middle" fill="#526a7c" font-size="14">
-<text x="320" y="590">同步切割 · 固定外接球半径 · 正交投影</text>
-<text x="320" y="615" font-size="12">${options.seconds} 秒 / 次变换 · 端点停留 ${options.hold} 秒</text>
-</g>
 </svg>
 `;
 }

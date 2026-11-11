@@ -5,11 +5,12 @@ import type { Vec } from "./geometry.ts";
 
 export type Options = {
   seconds: number; hold: number; samples: number; size: number;
-  view: Vec; light: Vec; hue: number; saturation: number;
-  background: string; stroke: string; strokeWidth: number;
+  view: Vec; light: Vec; strokeWidth: number;
+  colors: { mode: "auto" | "light" | "dark"; light: Palette; dark: Palette };
   rotation: { enabled: boolean; axis: Vec; turns: number };
 };
-const optionKeys = ["seconds", "hold", "samples", "size", "view", "light", "hue", "saturation", "background", "stroke", "strokeWidth", "rotation"];
+type Palette = { fill: string; stroke: string };
+const optionKeys = ["seconds", "hold", "samples", "size", "view", "light", "strokeWidth", "rotation", "colors"];
 
 function object(value: unknown, path: string): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${path} 必须是对象`);
@@ -37,14 +38,12 @@ export function validateOptions(value: unknown, path: string): Options {
   const v = object(value, path);
   keys(v, optionKeys, path);
   for (const key of optionKeys) if (!Object.hasOwn(v, key)) throw new Error(`${path}.${key} 未配置`);
-  for (const key of ["seconds", "hold", "samples", "size", "hue", "saturation", "strokeWidth"]) {
+  for (const key of ["seconds", "hold", "samples", "size", "strokeWidth"]) {
     if (typeof v[key] !== "number" || !Number.isFinite(v[key])) throw new Error(`${path}.${key} 必须是有限数值`);
   }
   for (const key of ["seconds", "samples", "size"]) if ((v[key] as number) <= 0) throw new Error(`${path}.${key} 必须大于 0`);
   for (const key of ["hold", "strokeWidth"]) if ((v[key] as number) < 0) throw new Error(`${path}.${key} 不能小于 0`);
   for (const key of ["samples", "size"]) if (!Number.isSafeInteger(v[key])) throw new Error(`${path}.${key} 必须是正整数`);
-  if ((v.hue as number) < 0 || (v.hue as number) > 360) throw new Error(`${path}.hue 必须在 0 到 360 之间`);
-  if ((v.saturation as number) < 0 || (v.saturation as number) > 100) throw new Error(`${path}.saturation 必须在 0 到 100 之间`);
   if (!Number.isFinite(2 * ((v.seconds as number) + (v.hold as number)))) throw new Error(`${path} 的动画周期过大`);
   const view = vector(v.view, `${path}.view`), light = vector(v.light, `${path}.light`);
   const rotation = object(v.rotation, `${path}.rotation`);
@@ -53,10 +52,15 @@ export function validateOptions(value: unknown, path: string): Options {
   if (!Number.isSafeInteger(rotation.turns) || rotation.turns === 0) throw new Error(`${path}.rotation.turns 必须是非零整数，以保证循环衔接`);
   const axis = vector(rotation.axis, `${path}.rotation.axis`);
   if (length(cross([0, 1, 0], unit(view))) < 1e-8) throw new Error(`${path}.view 不能与竖直方向 [0, 1, 0] 平行`);
-  for (const key of ["background", "stroke"]) {
-    const color = string(v[key], `${path}.${key}`);
-    if (color !== "transparent" && !/^#(?:[\da-f]{3}|[\da-f]{4}|[\da-f]{6}|[\da-f]{8})$/i.test(color)) {
-      throw new Error(`${path}.${key} 必须是十六进制颜色或 transparent`);
+  const colors = object(v.colors, `${path}.colors`);
+  keys(colors, ["mode", "light", "dark"], `${path}.colors`);
+  if (!["auto", "light", "dark"].includes(colors.mode as string)) throw new Error(`${path}.colors.mode 必须是 auto、light 或 dark`);
+  for (const theme of ["light", "dark"]) {
+    const palette = object(colors[theme], `${path}.colors.${theme}`);
+    keys(palette, ["fill", "stroke"], `${path}.colors.${theme}`);
+    for (const key of ["fill", "stroke"]) {
+      const color = string(palette[key], `${path}.colors.${theme}.${key}`);
+      if (!/^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(color)) throw new Error(`${path}.colors.${theme}.${key} 必须是 #RGB 或 #RRGGBB 十六进制颜色`);
     }
   }
   return { ...v, view, light, rotation: { enabled: rotation.enabled, axis, turns: rotation.turns as number } } as Options;
@@ -84,8 +88,14 @@ export function parseArgs(args: string[]) {
 }
 
 function mergeOptions(base: Options, overrides: Record<string, unknown>, path: string): Record<string, unknown> {
+  const colors = Object.hasOwn(overrides, "colors") ? object(overrides.colors, `${path}.colors`) : {};
   return {
     ...base, ...overrides,
+    colors: {
+      ...base.colors, ...colors,
+      light: Object.hasOwn(colors, "light") ? { ...base.colors.light, ...object(colors.light, `${path}.colors.light`) } : base.colors.light,
+      dark: Object.hasOwn(colors, "dark") ? { ...base.colors.dark, ...object(colors.dark, `${path}.colors.dark`) } : base.colors.dark,
+    },
     rotation: Object.hasOwn(overrides, "rotation")
       ? { ...base.rotation, ...object(overrides.rotation, `${path}.rotation`) }
       : base.rotation,
