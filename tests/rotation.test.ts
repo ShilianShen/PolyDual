@@ -52,7 +52,7 @@ function track(markup: string, attribute: string, t: number): string {
 
 for (const item of initialSolids()) {
   test(`${item.id}: rotating SVG projects the cut, updates lighting and hides back faces`, () => {
-    const options = { ...referenceOptions, rotation: { enabled: true, axis: [0, 1, 0] as Vec, turns: 1 } };
+    const options = { ...referenceOptions, view: [4, -0.9, 2] as Vec, rotation: { enabled: true, axis: [0.35, 1, -0.25] as Vec, turns: 1 } };
     const svg = renderSVG(item, options);
     const groups = [...svg.matchAll(/<g display="[^>]*>(.*?)<\/g>/gs)].map(m => m[1]);
     const forward = transition(item.solid), backward = transition(forward.target);
@@ -84,5 +84,33 @@ for (const item of initialSolids()) {
     assert.notEqual(track(firstPath, "d", 0), track(firstPath, "d", options.hold / duration / 2), "Rotation continues during a cutting hold");
     const shades = [...groups[0].matchAll(/<use\b[^>]*>(.*?)<\/use>/gs)].map(m => m[1]);
     assert.ok(shades.some(p => track(p, "opacity", 0) !== track(p, "opacity", 0.1)), "World-fixed light changes face brightness");
+  });
+}
+
+for (const item of initialSolids()) {
+  test(`${item.id}: endpoint colors persist across both cuts and the loop boundary`, () => {
+    const forward = transition(item.solid), backward = transition(forward.target);
+    const svg = renderSVG(item, referenceOptions);
+    const groups = [...svg.matchAll(/<g display="[^>]*>(.*?)<\/g>/gs)].map(m => m[1]);
+    const stages = [...forward.stages, ...backward.stages];
+    const roles = groups.map(g => [...g.matchAll(/<path\b[^>]*class="polydual-(primary|dual)"/g)].map(m => m[1]));
+    const colorsAt = (index: number, t: number) => {
+      const stage = stages[index], points = normalizedPoints(stage, t);
+      return new Set(stage.faces.flatMap((f, i) => {
+        const center = points[f.vertices[0]];
+        let area = 0;
+        for (let j = 1; j < f.vertices.length - 1; j++) {
+          area += length(cross(sub(points[f.vertices[j]], center), sub(points[f.vertices[j + 1]], center))) / 2;
+        }
+        return area > 1e-7 ? [roles[index][i]] : [];
+      }));
+    };
+    assert.deepEqual(colorsAt(0, 0), new Set(["primary"]));
+    assert.deepEqual(colorsAt(forward.stages.length - 1, 1), new Set(["dual"]));
+    assert.deepEqual(colorsAt(forward.stages.length, 0), new Set(["dual"]));
+    assert.deepEqual(colorsAt(stages.length - 1, 1), new Set(["primary"]));
+    for (let i = 0; i < stages.length; i++) {
+      assert.deepEqual(colorsAt(i, (stages[i].start + stages[i].end) / 2), new Set(["primary", "dual"]));
+    }
   });
 }

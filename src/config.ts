@@ -9,7 +9,7 @@ export type Options = {
   colors: { mode: "auto" | "light" | "dark"; light: Palette; dark: Palette };
   rotation: { enabled: boolean; axis: Vec; turns: number };
 };
-type Palette = { fill: string; stroke: string };
+type Palette = { fill: string; dualFill: string; stroke: string };
 const optionKeys = ["seconds", "hold", "samples", "size", "view", "light", "strokeWidth", "rotation", "colors"];
 
 function object(value: unknown, path: string): Record<string, unknown> {
@@ -57,8 +57,8 @@ export function validateOptions(value: unknown, path: string): Options {
   if (!["auto", "light", "dark"].includes(colors.mode as string)) throw new Error(`${path}.colors.mode 必须是 auto、light 或 dark`);
   for (const theme of ["light", "dark"]) {
     const palette = object(colors[theme], `${path}.colors.${theme}`);
-    keys(palette, ["fill", "stroke"], `${path}.colors.${theme}`);
-    for (const key of ["fill", "stroke"]) {
+    keys(palette, ["fill", "dualFill", "stroke"], `${path}.colors.${theme}`);
+    for (const key of ["fill", "dualFill", "stroke"]) {
       const color = string(palette[key], `${path}.colors.${theme}.${key}`);
       if (!/^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(color)) throw new Error(`${path}.colors.${theme}.${key} 必须是 #RGB 或 #RRGGBB 十六进制颜色`);
     }

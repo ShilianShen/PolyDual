@@ -34,6 +34,7 @@ test("config: common settings, animation overrides, CLI precedence and path base
   assert.deepEqual(loaded.jobs[0].options.rotation, { enabled: true, axis: [0, 1, 0], turns: 1 });
   assert.equal(loaded.jobs[0].options.colors.dark.fill, "#ffcc00");
   assert.equal(loaded.jobs[0].options.colors.dark.stroke, config.defaults.colors.dark.stroke);
+  assert.equal(loaded.jobs[0].options.colors.dark.dualFill, config.defaults.colors.dark.dualFill);
   assert.deepEqual(loaded.jobs[0].options.colors.light, config.defaults.colors.light);
   const cli = await loadConfig(file, { seconds: 9, size: 800 }, "relative-cli-output");
   assert.equal(cli.directory, resolve("relative-cli-output"));
@@ -57,6 +58,8 @@ test("config: missing, malformed and invalid settings fail clearly", async t => 
     ["parallel view", c => c.defaults.view = [0, 2, 0], /不能与竖直方向/],
     ["zero light", c => c.defaults.light = [0, 0, 0], /非零向量/],
     ["bad color", c => c.defaults.colors.light.fill = "url(remote.svg)", /十六进制颜色/],
+    ["missing dual color", c => delete c.defaults.colors.dark.dualFill, /colors.dark.dualFill/],
+    ["bad dual color", c => c.defaults.colors.light.dualFill = "invalid", /十六进制颜色/],
     ["bad disabled entry", c => Object.assign(c.animations.tetrahedron, { enabled: false, colors: { dark: { fill: "invalid" } } }), /十六进制颜色/],
     ["bad theme mode", c => c.defaults.colors.mode = "automatic", /mode 必须是/],
     ["missing dark palette", c => delete c.defaults.colors.dark, /colors.dark 必须是对象/],
@@ -88,11 +91,12 @@ test("config: custom view, lighting and styling reach the generated SVG", () => 
   const baseline = renderSVG(item, referenceOptions);
   const styled = renderSVG(item, {
     ...referenceOptions, size: 800, view: [3, 2, 4], light: [3, -5, -6],
-    colors: { ...referenceOptions.colors, mode: "dark", dark: { fill: "#e07be0", stroke: "#abc" } }, strokeWidth: 2,
+    colors: { ...referenceOptions.colors, mode: "dark", dark: { fill: "#e07be0", dualFill: "#ffcc00", stroke: "#abc" } }, strokeWidth: 2,
   });
   assert.match(styled, /width="800" height="800"/);
   assert.doesNotMatch(styled, /<rect\b|<text\b|<foreignObject\b/);
   assert.match(styled, /color:#e07be0;stroke:#abc/);
+  assert.match(styled, /polydual-dual\{color:#ffcc00\}/);
   assert.match(styled, /stroke-width="2"/);
   assert.doesNotMatch(styled, /prefers-color-scheme/);
   assert.notEqual(styled.match(/<path d="([^"]*)"/)![1], baseline.match(/<path d="([^"]*)"/)![1]);
@@ -112,6 +116,7 @@ test("SVG: auto colors follow media preference, forced themes use their configur
     const svg = renderSVG(item, { ...referenceOptions, colors: { ...referenceOptions.colors, mode } });
     assert.doesNotMatch(svg, /@media/);
     assert.ok(svg.includes(`color:${referenceOptions.colors[mode].fill};stroke:${referenceOptions.colors[mode].stroke}`));
+    assert.ok(svg.includes(`.polydual-dual{color:${referenceOptions.colors[mode].dualFill}}`));
   }
 });
 

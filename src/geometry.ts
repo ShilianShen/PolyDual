@@ -1,13 +1,13 @@
 export type Vec = [number, number, number];
 export type Face = { normal: Vec; distance: number; vertices: number[] };
 export type Solid = { vertices: Vec[]; faces: Face[] };
-type Plane = { normal: Vec; start: number; delta: number };
+type Plane = { normal: Vec; start: number; delta: number; kind: "original" | "cut" };
 export type MovingVertex = { start: Vec; delta: Vec };
 export type Stage = {
   start: number;
   end: number;
   vertices: MovingVertex[];
-  faces: { normal: Vec; vertices: number[] }[];
+  faces: { normal: Vec; vertices: number[]; kind: "original" | "cut" }[];
 };
 export type Transition = { source: Solid; target: Solid; stop: number; stages: Stage[] };
 const EPS = 1e-8;
@@ -89,8 +89,8 @@ export function transition(source: Solid): Transition {
   const stop = h * h;
   const target = hull(source.faces.map(f => f.normal));
   const planes: Plane[] = [
-    ...source.faces.map(f => ({ normal: f.normal, start: f.distance, delta: 0 })),
-    ...source.vertices.map(v => ({ normal: v, start: 1, delta: stop - 1 })),
+    ...source.faces.map(f => ({ normal: f.normal, start: f.distance, delta: 0, kind: "original" as const })),
+    ...source.vertices.map(v => ({ normal: v, start: 1, delta: stop - 1, kind: "cut" as const })),
   ];
   const candidates: (MovingVertex & { lo: number; hi: number })[] = [];
   const breaks = [0, 1];
@@ -128,7 +128,7 @@ export function transition(source: Solid): Transition {
     const points = vertices.map(v => position(v, mid));
     const faces = planes.flatMap(p => {
       const indices = points.flatMap((v, n) => Math.abs(dot(p.normal, v) - p.start - p.delta * mid) < EPS ? [n] : []);
-      return indices.length < 3 ? [] : [{ normal: p.normal, vertices: orderFace(indices, points, p.normal) }];
+      return indices.length < 3 ? [] : [{ normal: p.normal, vertices: orderFace(indices, points, p.normal), kind: p.kind }];
     });
     stages.push({ start, end, vertices, faces });
   }

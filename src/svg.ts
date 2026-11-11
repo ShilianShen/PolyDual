@@ -69,9 +69,12 @@ function stageSVG(stage: Stage, half: number, first: boolean, options: Options, 
     const ds = frames.map(points => path(points, f.vertices, right, up));
     const visibility = facing(f.normal, view, options);
     const id = `${prefix}-face-${faceIndex}`;
+    // Color belongs to a solid's faces, so the same face keeps its color when
+    // it becomes an original face in the next half of the cycle.
+    const dual = (half === 0 && f.kind === "cut") || (half === 1 && f.kind === "original");
     // Inherited fill lets the base path use the theme color while its instance
     // supplies a black lighting layer. Both share the same animated geometry.
-    return `<path d="${ds[0]}" id="${id}" visibility="${visibility.initial}">${animation("d", ds, times, duration)}${visibility.animation}</path><use href="#${id}" fill="#000" stroke="none" opacity="${shades[0]}">${animation("opacity", shades, times, duration)}</use>`;
+    return `<path d="${ds[0]}" id="${id}" class="polydual-${dual ? "dual" : "primary"}" visibility="${visibility.initial}">${animation("d", ds, times, duration)}${visibility.animation}</path><use href="#${id}" fill="#000" stroke="none" opacity="${shades[0]}">${animation("opacity", shades, times, duration)}</use>`;
   });
   // display:none suppresses descendants even if their own visibility is visible.
   return `<g display="${first ? "inline" : "none"}" class="polydual-mesh" fill="currentColor" stroke-width="${options.strokeWidth}" stroke-linejoin="round">${display(visibleStart, cutEnd, duration)}\n${paths.join("\n")}\n</g>`;
@@ -84,7 +87,7 @@ export function renderSVG(item: ReturnType<typeof initialSolids>[number], option
   const phases = [forward, backward].flatMap((tr, half) => tr.stages.map((stage, i) =>
     stageSVG(stage, half, half === 0 && i === 0, options, `${item.id}-${half}-${i}`)));
   const selector = `.polydual-${item.id} .polydual-mesh`;
-  const rule = (theme: "light" | "dark") => `${selector}{color:${options.colors[theme].fill};stroke:${options.colors[theme].stroke}}`;
+  const rule = (theme: "light" | "dark") => `${selector}{color:${options.colors[theme].fill};stroke:${options.colors[theme].stroke}}.polydual-${item.id} .polydual-dual{color:${options.colors[theme].dualFill}}`;
   const styles = options.colors.mode === "auto"
     ? `${rule("light")}\n@media (prefers-color-scheme: dark){${rule("dark")}}`
     : rule(options.colors.mode);
