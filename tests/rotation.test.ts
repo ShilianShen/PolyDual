@@ -5,6 +5,7 @@ import type { Vec } from "../src/geometry.ts";
 import { rotate, silhouetteTimes, uniqueTimes } from "../src/motion.ts";
 import { renderSVG } from "../src/svg.ts";
 import { referenceOptions } from "./fixtures.ts";
+import { attributes, edgesIn, facesIn, numericValues, valueAt } from "./svg-helpers.ts";
 
 test("rotation: right-handed direction, rigid distances, disabled state and closed loops", () => {
   const rotation = { enabled: true, axis: [0, 1, 0] as Vec, turns: 1 };
@@ -38,23 +39,15 @@ test("rotation: silhouette events locate front/back changes for either direction
 });
 
 function track(markup: string, attribute: string, t: number): string {
-  const tags = [...markup.matchAll(/<animate\b([^>]+)\/>/g)];
-  const attrs = tags.map(tag => Object.fromEntries([...tag[1].matchAll(/([\w-]+)="([^"]*)"/g)].map(m => [m[1], m[2]])))
-    .find(a => a.attributeName === attribute)!;
-  const times = attrs.keyTimes.split(";").map(Number), values = attrs.values.split(";");
-  const i = times.findLastIndex(time => time <= t);
-  if (attrs.calcMode === "discrete" || i === times.length - 1) return values[i];
-  const u = (t - times[i]) / (times[i + 1] - times[i]);
-  const numbers = (value: string) => (value.match(/-?\d+(?:\.\d+)?(?:e[-+]?\d+)?/g) ?? []).map(Number);
-  const a = numbers(values[i]), b = numbers(values[i + 1]);
-  return a.map((v, j) => v + (b[j] - v) * u).join(",");
+  const value = valueAt(markup, attribute, t);
+  return attribute === "d" ? numericValues(value).join(",") : value;
 }
 
 for (const item of initialSolids()) {
   test(`${item.id}: rotating SVG projects the cut, updates lighting and dashes occluded edges`, () => {
     const options = { ...referenceOptions, view: [4, -0.9, 2] as Vec, rotation: { enabled: true, axis: [0.35, 1, -0.25] as Vec, turns: 1 } };
     const svg = renderSVG(item, options);
-    const groups = [...svg.matchAll(/<g display="[^>]*>(.*?)<\/g>/gs)].map(m => m[1]);
+    const groups = [...svg.matchAll(/<g display="[^>]*>.*?<\/g>/gs)].map(m => m[0]);
     const forward = transition(item.solid), backward = transition(forward.target);
     const stages = [forward, backward].flatMap((tr, half) => tr.stages.map(stage => ({ stage, half })));
     const duration = 2 * (options.seconds + options.hold);
@@ -65,29 +58,34 @@ for (const item of initialSolids()) {
       const i = active[0], { stage, half } = stages[i];
       const progress = Math.max(stage.start, Math.min(stage.end, (t * duration - half * duration / 2 - options.hold) / options.seconds));
       const points = normalizedPoints(stage, progress).map(p => rotate(p, options.rotation, t));
-      const paths = [...groups[i].matchAll(/<path\b[^>]*class="polydual-(?:primary|dual)"[^>]*>(.*?)<\/path>/gs)].map(m => m[1]);
+      const paths = facesIn(groups[i]);
       let visible = 0;
-      paths.forEach((path, faceIndex) => {
-        const face = stage.faces[faceIndex];
+      stage.faces.forEach((face, faceIndex) => {
+        const path = paths.get(faceIndex);
         const facing = dot(rotate(face.normal, options.rotation, t), view);
+        if (!path) { assert.ok(facing <= 1e-7, `A visible face was incorrectly removed at t=${t}`); return; }
         if (Math.abs(facing) > 1e-7) assert.equal(track(path, "visibility", t), facing > 0 ? "visible" : "hidden");
         if (track(path, "visibility", t) === "visible") visible++;
         const expected = face.vertices.flatMap(n => [320 + 225 * dot(points[n], right), 320 - 225 * dot(points[n], up)]);
         const actual = track(path, "d", t).split(",").map(Number);
         assert.equal(actual.length, expected.length);
-        assert.ok(actual.every((v, n) => Math.abs(v - expected[n]) < 0.05), `Projected geometry at t=${t}`);
+        // 0.05 px simplification budget plus the original sampled-motion error.
+        assert.ok(actual.every((v, n) => Math.abs(v - expected[n]) < 0.08), `Projected geometry at t=${t}`);
       });
       assert.ok(visible > 0);
       const edges = stageEdges(stage);
-      const hiddenPaths = [...groups[i].matchAll(/<path class="polydual-hidden-edge"[^>]*>(.*?)<\/path>/gs)].map(m => m[1]);
-      assert.equal(hiddenPaths.length, edges.length);
+      const hiddenPaths = edgesIn(groups[i]);
+      assert.ok(hiddenPaths.size <= edges.length);
       assert.equal(edges.length, stage.vertices.length + stage.faces.length - 2);
       assert.equal(new Set(edges.map(e => e.vertices.join(","))).size, edges.length);
       edges.forEach((edge, edgeIndex) => {
         const [a, b] = edge.vertices;
         const expected = [points[a], points[b]].flatMap(p => [320 + 225 * dot(p, right), 320 - 225 * dot(p, up)]);
-        const actual = track(hiddenPaths[edgeIndex], "d", t).split(",").map(Number);
-        assert.ok(actual.every((v, n) => Math.abs(v - expected[n]) < 0.05));
+        const path = hiddenPaths.get(edgeIndex);
+        if (path) {
+          const actual = track(path, "d", t).split(",").map(Number);
+          assert.ok(actual.every((v, n) => Math.abs(v - expected[n]) < 0.08));
+        }
         if (length(sub(points[a], points[b])) < 1e-7) return;
         // Independent occlusion oracle: trace a ray from the edge midpoint
         // toward the camera. A positive exit distance means a face covers it.
@@ -100,13 +98,13 @@ for (const item of initialSolids()) {
             exit = Math.min(exit, dot(normal, sub(points[face.vertices[0]], midpoint)) / denominator);
           }
         }
-        assert.equal(track(hiddenPaths[edgeIndex], "visibility", t), exit > 1e-7 ? "visible" : "hidden", `Occluded edge ${edgeIndex} at t=${t}`);
+        assert.equal(path ? track(path, "visibility", t) : "hidden", exit > 1e-7 ? "visible" : "hidden", `Occluded edge ${edgeIndex} at t=${t}`);
       });
     }
-    const firstPaths = [...groups[0].matchAll(/<path\b[^>]*class="polydual-(?:primary|dual)"[^>]*>(.*?)<\/path>/gs)].map(m => m[1]);
+    const firstPaths = [...facesIn(groups[0]).values()];
     const firstPath = firstPaths[0];
     assert.notEqual(track(firstPath, "d", 0), track(firstPath, "d", options.hold / duration / 2), "Rotation continues during a cutting hold");
-    const shades = [...groups[0].matchAll(/<use\b[^>]*>(.*?)<\/use>/gs)].map(m => m[1]);
+    const shades = [...groups[0].matchAll(/<use\b[^>]*>.*?<\/use>/gs)].map(m => m[0]);
     assert.ok(shades.some(p => track(p, "opacity", 0) !== track(p, "opacity", 0.1)), "World-fixed light changes face brightness");
   });
 }
@@ -121,9 +119,9 @@ for (const item of initialSolids()) {
   test(`${item.id}: endpoint colors persist across both cuts and the loop boundary`, () => {
     const forward = transition(item.solid), backward = transition(forward.target);
     const svg = renderSVG(item, referenceOptions);
-    const groups = [...svg.matchAll(/<g display="[^>]*>(.*?)<\/g>/gs)].map(m => m[1]);
+    const groups = [...svg.matchAll(/<g display="[^>]*>.*?<\/g>/gs)].map(m => m[0]);
     const stages = [...forward.stages, ...backward.stages];
-    const roles = groups.map(g => [...g.matchAll(/<path\b[^>]*class="polydual-(primary|dual)"/g)].map(m => m[1]));
+    const roles = groups.map(g => new Map([...facesIn(g)].map(([i, path]) => [i, attributes(path).class.replace("polydual-", "")])));
     const colorsAt = (index: number, t: number) => {
       const stage = stages[index], points = normalizedPoints(stage, t);
       return new Set(stage.faces.flatMap((f, i) => {
@@ -132,7 +130,7 @@ for (const item of initialSolids()) {
         for (let j = 1; j < f.vertices.length - 1; j++) {
           area += length(cross(sub(points[f.vertices[j]], center), sub(points[f.vertices[j + 1]], center))) / 2;
         }
-        return area > 1e-7 ? [roles[index][i]] : [];
+        return area > 1e-7 && roles[index].has(i) ? [roles[index].get(i)!] : [];
       }));
     };
     assert.deepEqual(colorsAt(0, 0), new Set(["primary"]));

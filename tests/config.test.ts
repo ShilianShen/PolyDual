@@ -107,7 +107,7 @@ test("config: custom view, lighting and styling reach the generated SVG", () => 
   assert.doesNotMatch(styled, /prefers-color-scheme/);
   assert.notEqual(styled.match(/<path d="([^"]*)"/)![1], baseline.match(/<path d="([^"]*)"/)![1]);
   const relit = renderSVG(item, { ...referenceOptions, light: [3, -5, -6] });
-  const shading = (svg: string) => [...svg.matchAll(/attributeName="opacity" values="([^"]*)"/g)].map(m => m[1]);
+  const shading = (svg: string) => [...svg.matchAll(/<use\b[^>]*opacity="([^"]*)"/g)].map(m => m[1]);
   assert.notDeepEqual(shading(relit), shading(baseline));
 });
 
