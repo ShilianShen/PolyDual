@@ -1,7 +1,7 @@
 import { cross, dot, initialSolids, normalizedPoints, stageEdges, transition, unit } from "./geometry.ts";
 import type { Stage, Vec } from "./geometry.ts";
 import type { Options } from "./config.ts";
-import { rotate, silhouetteTimes, uniqueTimes } from "./motion.ts";
+import { cutProgress, cutTime, rotate, silhouetteTimes, uniqueTimes } from "./motion.ts";
 import { constantValue, selectKeyframes, visibilityInWindow } from "./optimize.ts";
 import type { Point, VisibilityTrack } from "./optimize.ts";
 
@@ -50,8 +50,8 @@ function stageSVG(stage: Stage, half: number, first: boolean, options: Options, 
   const view = unit(options.view), light = unit(options.light);
   const right = unit(cross([0, 1, 0], view)), up = cross(view, right);
   const halfDuration = hold + seconds, duration = 2 * halfDuration;
-  const cutStart = (half * halfDuration + hold + seconds * stage.start) / duration;
-  const cutEnd = (half * halfDuration + hold + seconds * stage.end) / duration;
+  const cutStart = (half * halfDuration + hold + seconds * cutTime(stage.start, options.cutEasing)) / duration;
+  const cutEnd = (half * halfDuration + hold + seconds * cutTime(stage.end, options.cutEasing)) / duration;
   const visibleStart = stage.start === 0 ? half / 2 : cutStart;
   // Include endpoint holds in sampling: cutting pauses, but rotation continues.
   const count = Math.max(2, Math.ceil((cutEnd - visibleStart) * duration * samples));
@@ -69,7 +69,8 @@ function stageSVG(stage: Stage, half: number, first: boolean, options: Options, 
   }
   const frames = times.map(time => {
     const t = Math.max(visibleStart, Math.min(cutEnd, time));
-    const progress = Math.max(stage.start, Math.min(stage.end, (t * duration - half * halfDuration - hold) / seconds));
+    const elapsed = (t * duration - half * halfDuration - hold) / seconds;
+    const progress = Math.max(stage.start, Math.min(stage.end, cutProgress(elapsed, options.cutEasing)));
     return normalizedPoints(stage, progress).map(v => rotate(v, options.rotation, t));
   });
   const positions = frames.map(points => points.map((p): Point => [320 + 225 * dot(p, right), 320 - 225 * dot(p, up)]));
@@ -131,7 +132,7 @@ export function renderSVG(item: ReturnType<typeof initialSolids>[number], option
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" class="polydual-${item.id}" width="${options.size}" height="${options.size}" viewBox="0 0 640 640" role="img" aria-labelledby="title desc">
 <title id="title">${xml(item.title)}</title>
-<desc id="desc">所有顶点的切割平面同时等速向中心移动，到达对偶正多面体后重新切割。相机采用固定正交视角，${options.rotation.enabled ? `物体每周期绕轴 [${options.rotation.axis.join(", ")}] 旋转 ${options.rotation.turns} 圈，` : ""}外接球半径恒定。周期 ${fmt(2 * (options.seconds + options.hold))} 秒。</desc>
+<desc id="desc">所有顶点的切割平面${options.cutEasing === "linear" ? "同时等速" : "同步平滑加减速"}向中心移动，到达对偶正多面体后重新切割。相机采用固定正交视角，${options.rotation.enabled ? `物体每周期绕轴 [${options.rotation.axis.join(", ")}] 旋转 ${options.rotation.turns} 圈，` : ""}外接球半径恒定。周期 ${fmt(2 * (options.seconds + options.hold))} 秒。</desc>
 <style>${styles}</style>
 ${phases.join("\n")}
 </svg>

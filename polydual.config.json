@@ -2,6 +2,7 @@
   "out": "output",
   "defaults": {
     "seconds": 5,
+    "cutEasing": "smootherstep",
     "hold": 0.8,
     "samples": 60,
     "size": 640,

@@ -50,7 +50,7 @@ test("optimization: linear motion can drop redundant knots while retaining manda
 for (const item of initialSolids()) {
   test(`${item.id}: pruning preserves visibility, interpolation stays bounded, events and references survive`, () => {
     const variants = [
-      referenceOptions,
+      { ...referenceOptions, cutEasing: "linear" as const },
       { ...referenceOptions, view: [4, -0.9, 2] as [number, number, number], rotation: { enabled: true, axis: [0.35, 1, -0.25] as [number, number, number], turns: 1 } },
       { ...referenceOptions, hold: 0, samples: 30, rotation: { enabled: true, axis: [1, 2, 3] as [number, number, number], turns: -1 } },
     ];

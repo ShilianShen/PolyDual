@@ -5,13 +5,14 @@ import type { Vec } from "./geometry.ts";
 
 export type Options = {
   seconds: number; hold: number; samples: number; size: number;
+  cutEasing: "linear" | "smootherstep";
   view: Vec; light: Vec; strokeWidth: number;
   colors: { mode: "auto" | "light" | "dark"; light: Palette; dark: Palette };
   rotation: { enabled: boolean; axis: Vec; turns: number };
   hiddenEdges: { enabled: boolean; dash: [number, number]; opacity: number; width: number };
 };
 type Palette = { fill: string; dualFill: string; stroke: string };
-const optionKeys = ["seconds", "hold", "samples", "size", "view", "light", "strokeWidth", "rotation", "colors", "hiddenEdges"];
+const optionKeys = ["seconds", "hold", "samples", "size", "cutEasing", "view", "light", "strokeWidth", "rotation", "colors", "hiddenEdges"];
 
 function object(value: unknown, path: string): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${path} 必须是对象`);
@@ -39,6 +40,7 @@ export function validateOptions(value: unknown, path: string): Options {
   const v = object(value, path);
   keys(v, optionKeys, path);
   for (const key of optionKeys) if (!Object.hasOwn(v, key)) throw new Error(`${path}.${key} 未配置`);
+  if (v.cutEasing !== "linear" && v.cutEasing !== "smootherstep") throw new Error(`${path}.cutEasing 必须是 linear 或 smootherstep`);
   for (const key of ["seconds", "hold", "samples", "size", "strokeWidth"]) {
     if (typeof v[key] !== "number" || !Number.isFinite(v[key])) throw new Error(`${path}.${key} 必须是有限数值`);
   }

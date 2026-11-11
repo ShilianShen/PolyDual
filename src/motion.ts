@@ -4,6 +4,26 @@ import type { Options } from "./config.ts";
 
 type Rotation = Options["rotation"];
 
+/** Apply easing once per complete cut, in the solid's local coordinates. */
+export function cutProgress(time: number, easing: Options["cutEasing"]): number {
+  const t = Math.max(0, Math.min(1, time));
+  if (easing === "linear") return t;
+  return t * t * t * (10 + t * (-15 + 6 * t));
+}
+
+/** Map geometric topology boundaries back to clock time; do not ease each stage. */
+export function cutTime(progress: number, easing: Options["cutEasing"]): number {
+  const target = Math.max(0, Math.min(1, progress));
+  if (easing === "linear" || target === 0 || target === 1) return target;
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 64; i++) {
+    const mid = (lo + hi) / 2;
+    if (cutProgress(mid, easing) < target) lo = mid;
+    else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
 // Rodrigues' formula: rotate in world coordinates about an axis through the center.
 export function rotate(v: Vec, rotation: Rotation, progress: number): Vec {
   if (!rotation.enabled) return v;

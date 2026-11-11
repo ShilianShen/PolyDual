@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { add, cross, dot, initialSolids, length, normalizedPoints, scale, stageEdges, sub, transition, unit } from "../src/geometry.ts";
 import type { Vec } from "../src/geometry.ts";
-import { rotate, silhouetteTimes, uniqueTimes } from "../src/motion.ts";
+import { cutProgress, rotate, silhouetteTimes, uniqueTimes } from "../src/motion.ts";
 import { renderSVG } from "../src/svg.ts";
 import { referenceOptions } from "./fixtures.ts";
 import { attributes, edgesIn, facesIn, numericValues, valueAt } from "./svg-helpers.ts";
@@ -56,7 +56,7 @@ for (const item of initialSolids()) {
       const active = groups.flatMap((g, i) => track(g, "display", t) === "inline" ? [i] : []);
       assert.equal(active.length, 1, `Exactly one cut stage should show at t=${t}`);
       const i = active[0], { stage, half } = stages[i];
-      const progress = Math.max(stage.start, Math.min(stage.end, (t * duration - half * duration / 2 - options.hold) / options.seconds));
+      const progress = Math.max(stage.start, Math.min(stage.end, cutProgress((t * duration - half * duration / 2 - options.hold) / options.seconds, options.cutEasing)));
       const points = normalizedPoints(stage, progress).map(p => rotate(p, options.rotation, t));
       const paths = facesIn(groups[i]);
       let visible = 0;

@@ -1,168 +1,214 @@
-# PolyDual
+<h1 align="center">PolyDual</h1>
 
-通过同步切割展示正多面体的对偶变换，使用 TypeScript 生成三个可独立播放的 SVG 动画。
+<p align="center">Regular polyhedra becoming their duals, one cut at a time.</p>
 
-## 运行
+<p align="center"><strong>English</strong> · <a href="README_CN.md">简体中文</a></p>
 
-需要 **Node.js 24 或更新版本**，利用 Node.js 自带的 TypeScript 类型擦除直接执行脚本，无需安装依赖。
+<p align="center">
+  <a href="output/D3_N6_M8.svg">
+    <img src="output/D3_N6_M8.svg" width="520" alt="A rotating cube is continuously clipped into an octahedron and back." />
+  </a>
+</p>
+
+<p align="center">Synchronized cuts · Smooth starts and stops · Hidden edges · Automatic light/dark colors</p>
+
+[Quick start](#quick-start) · [Animations](#animations) · [Mathematics](#mathematics) · [Configuration](#configuration)
+
+## Quick start
+
+Use **Node.js 24+**. No package installation is required.
 
 ```sh
 npm run generate
 ```
 
-文件名为 `D维度_N面数_M顶点数`，计数以每组的初始多面体为准。配置中的动画 ID 保持不变，生成文件使用以下名称：
+Open any generated SVG in a browser with SVG/SMIL support. Each file is self-contained: transparent background, no visible labels, no scripts, and no external assets.
 
-| 变换 | SVG（自动主题） |
+The default loop lasts **11.6 seconds**: two 5-second cuts and a 0.8-second hold at each endpoint. The solid keeps rotating during holds.
+
+## Animations
+
+For an initial solid with `N` faces and `M` vertices, the dual has `M` faces and `N` vertices. Filenames describe the **initial** solid: `D<dimension>_N<faces>_M<vertices>.svg`.
+
+| Initial solid → dual → initial solid | Faces / vertices | Open animation |
+| --- | --- | --- |
+| Tetrahedron → dual tetrahedron → tetrahedron | 4 / 4 ↔ 4 / 4 | [D3_N4_M4.svg](output/D3_N4_M4.svg) |
+| Cube → octahedron → cube | 6 / 8 ↔ 8 / 6 | [D3_N6_M8.svg](output/D3_N6_M8.svg) |
+| Dodecahedron → icosahedron → dodecahedron | 12 / 20 ↔ 20 / 12 | [D3_N12_M20.svg](output/D3_N12_M20.svg) |
+
+Green identifies the initial solid's faces; red identifies its dual's faces. Existing faces keep their color as they shrink, while newly cut faces grow in the other color. The return trip is computed as another cut.
+
+## Mathematics
+
+### 1. A solid as an intersection of half-spaces
+
+Place a convex regular polyhedron $P$ at the origin and normalize its circumradius to $1$. Let $\mathbf v_i$ be its unit vertex vectors, $\mathbf n_f$ its outward unit face normals, and $h$ its inradius. Then
+
+$$
+P=\bigcap_{f=1}^{N}\left\{\mathbf x\in\mathbb R^3:\mathbf n_f^\top\mathbf x\le h\right\}.
+$$
+
+Each vertex supplies a cutting plane perpendicular to its radius. The plane starts at that vertex, and the half-space containing the center is retained. The remaining solid is
+
+$$
+K(u)=P\cap\bigcap_{i=1}^{M}
+\left\{\mathbf x:\mathbf v_i^\top\mathbf x\le d(u)\right\},
+\qquad 0\le u\le1.
+$$
+
+Here $u$ is the elapsed fraction of **one complete cut**, excluding its endpoint hold.
+
+### 2. Why the cut stops at $h^2$
+
+The polar dual is
+
+$$
+P^\circ=\left\{\mathbf y:\mathbf v_i^\top\mathbf y\le1,\ i=1,\ldots,M\right\}
+=\operatorname{conv}\left\{\frac{\mathbf n_f}{h}\right\}_{f=1}^{N}.
+$$
+
+At cutting-plane distance $d=h^2$, the new half-spaces enclose
+
+$$
+h^2P^\circ=\operatorname{conv}\{h\mathbf n_f\}_{f=1}^{N}\subseteq P,
+\qquad K(1)=h^2P^\circ.
+$$
+
+The inclusion follows from $\mathbf n_g^\top(h\mathbf n_f)\le h$ for unit normals. Thus the original face constraints become redundant, and the result is exactly the regular dual. Its unscaled circumradius is $h$.
+
+| Initial solid | Exact stop distance $h^2$ |
 | --- | --- |
-| 四面体 ↔ 对偶四面体 | [D3_N4_M4.svg](output/D3_N4_M4.svg) |
-| 立方体 ↔ 八面体 | [D3_N6_M8.svg](output/D3_N6_M8.svg) |
-| 十二面体 ↔ 二十面体 | [D3_N12_M20.svg](output/D3_N12_M20.svg) |
+| Tetrahedron | $1/9$ |
+| Cube | $1/3$ |
+| Dodecahedron | $(5+2\sqrt5)/15$ |
 
-使用支持 SVG/SMIL 的浏览器直接打开文件即可播放。文件内包含全部几何和动画数据，不依赖 JavaScript、外部资源或网络。
+The endpoint comes from geometry, rather than an area threshold or a visual approximation.
 
-默认每次切割 5 秒，每个端点停留 0.8 秒，完整往返周期为 11.6 秒。物体绕倾斜轴匀速旋转，相机轻微仰视，增加空间压迫感。每个往返周期转一圈；端点停留时只暂停切割，旋转继续。两次切割后形状、尺寸和朝向均恢复。
+### 3. Smooth cutting speed
 
-SVG 画面只包含多面体，没有可见文字或背景图层，背景始终透明。动画自动无限循环播放，所有几何、遮挡和光照动画共用相同周期。文件保留不可见的 `<title>`、`<desc>`，供辅助阅读器使用。
+The default quintic easing curve is
 
-## 参数
+$$
+E(u)=6u^5-15u^4+10u^3,
+\qquad d(u)=1-(1-h^2)E(u).
+$$
 
-默认读取当前工作目录的 [polydual.config.json](polydual.config.json)。修改它后重新运行生成命令即可生效。
+Its derivative is $E'(u)=30u^2(1-u)^2$, so
 
-配置文件包含三个部分：
+$$
+E(0)=0,\quad E(1)=1,\quad
+E'(0)=E'(1)=E''(0)=E''(1)=0.
+$$
 
-- `out`：输出目录；相对路径以配置文件所在目录为基准。
-- `defaults`：所有动画共用的参数，所有字段均须填写。
-- `animations`：按动画 ID 设置 `enabled`，并按需覆盖 `defaults` 中的任意字段。
+The target motion starts and stops with zero velocity and acceleration. One easing curve spans the entire cut; a geometric topology boundary at progress $s_b$ is scheduled at clock fraction $E^{-1}(s_b)$. This keeps intermediate topology changes moving through the same speed profile.
 
-例如，将配置文件中 `animations.tetrahedron` 的值改为以下内容，就可以单独调整四面体动画：
+Set `cutEasing` to `"linear"` for constant plane speed. SVG paths approximate the target motion with sampled linear interpolation.
 
-```json
-{
-  "enabled": true,
-  "seconds": 8,
-  "view": [3, 2, 4],
-  "colors": {
-    "light": { "fill": "#5faf7d", "dualFill": "#d96b6b" },
-    "dark": { "fill": "#8bd5a0", "dualFill": "#e87979" }
-  }
-}
-```
+### 4. Constant size and continuous rotation
 
-将 `enabled` 改为 `false` 可跳过该动画。未列入 `animations` 的动画也会跳过；至少需要启用一组。跳过时不会删除以前生成的文件。
+To keep the solid from shrinking, normalize each intermediate vertex by the current circumradius:
 
-| 配置字段 | 含义 | 随附配置的值 |
-| --- | --- | --- |
-| `seconds` | 每次切割秒数，大于 0 | `5` |
-| `hold` | 每个端点停留秒数，不小于 0 | `0.8` |
-| `samples` | 每秒几何采样数，正整数 | `60` |
-| `size` | SVG 宽高像素，正整数 | `640` |
-| `view` | 从中心指向观察者的方向向量，固定正交投影 | `[4, -0.9, 2]` |
-| `light` | 从中心指向光源的方向向量 | `[-3, 5, 6]` |
-| `colors.mode` | 配色模式：`auto`、`light` 或 `dark` | `"auto"` |
-| `colors.light.fill` | 浅色主题下初始多面体的基色 | `"#5faf7d"` |
-| `colors.light.dualFill` | 浅色主题下对偶多面体的基色 | `"#d96b6b"` |
-| `colors.light.stroke` | 浅色主题下的棱线色 | `"#33473d"` |
-| `colors.dark.fill` | 深色主题下初始多面体的基色 | `"#8bd5a0"` |
-| `colors.dark.dualFill` | 深色主题下对偶多面体的基色 | `"#e87979"` |
-| `colors.dark.stroke` | 深色主题下的棱线色 | `"#d8dee9"` |
-| `strokeWidth` | 棱线宽度，不小于 0，使用内部画布单位 | `1.25` |
-| `hiddenEdges.enabled` | 是否用虚线显示被遮挡的棱，布尔值 | `true` |
-| `hiddenEdges.dash` | 虚线的线段长度与间隔，两个大于 0 的数 | `[5, 4]` |
-| `hiddenEdges.opacity` | 虚线不透明度，范围 0–1 | `0.5` |
-| `hiddenEdges.width` | 虚线宽度，大于 0，使用内部画布单位 | `1` |
-| `rotation.enabled` | 是否开启整体旋转，布尔值 | `true` |
-| `rotation.axis` | 经过中心的旋转轴，非零三维向量 | `[0.35, 1, -0.25]` |
-| `rotation.turns` | 每个完整往返周期旋转的圈数，非零整数；负数反转方向 | `1` |
+$$
+r(u)=\max_{\mathbf x\in\operatorname{vert}K(u)}\|\mathbf x\|_2,
+\qquad \widehat{\mathbf x}=\frac{\mathbf x}{r(u)}.
+$$
 
-`view`、`light` 均为非零三维向量，长度不影响效果。画面竖直方向参考世界坐标的 Y 轴，因此 `view` 不能与 `[0, 1, 0]` 平行。多面体和棱线颜色支持不透明的 `#RGB`、`#RRGGBB`，以保持实体表面和遮挡关系。
+The normalized solid is rotated about the configured axis and projected orthographically. Over a full loop of duration $T=2(\tau+\delta)$,
 
-`colors.mode: "auto"` 使用 SVG 内部的 `prefers-color-scheme` 媒体查询选择配色，直接打开时跟随系统或浏览器明暗偏好；通过 `<img>` 嵌入时可跟随宿主的 `color-scheme`。它不读取周围背景的像素颜色；需要为指定背景固定配色时，将 `mode` 设为 `light` 或 `dark`。参见 [MDN 的 SVG 主题继承说明](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@media/prefers-color-scheme#embedded_elements)。
+$$
+\theta(t)=2\pi k\,\frac{t}{T},
+\qquad k\in\mathbb Z\setminus\{0\}.
+$$
 
-每组动画可只覆盖需要修改的颜色子字段，其余继承 `defaults.colors`。浅色主题与深色主题一样统一采用绿色／红色，使用较深的基色和深灰绿棱线，以适应明亮背景；三组动画共享同一套配色。
+Here $\tau$ is the cutting duration, $\delta$ the endpoint hold, and $k$ the number of turns. Integer turns restore the orientation at the loop boundary. Lighting follows the rotated face normals; occluded edges are dashed.
 
-深色主题统一采用绿色／红色配色：三组动画的初始多面体均使用绿色 `#8bd5a0`，对偶多面体均使用柔和红色 `#e87979`，棱线使用中性灰白 `#d8dee9`。各组继承公共深色配色，保留光照阴影、实线与虚线的层次。两套主题均保持对偶双方的双色归属。
+## Configuration
 
-颜色按面的归属区分：去程中原有面使用 `fill`，新切面使用 `dualFill`；返程中保留下来的面继续使用 `dualFill`，新切面使用 `fill`。原有面缩小、新切面长大时两种颜色同时可见，端点与循环边界不会整体跳色。旋转产生的光照通过独立的阴影层表现，不覆盖主题基色。
+Edit [polydual.config.json](polydual.config.json), then regenerate.
 
-配色配置替代了原来的 `hue`、`saturation` 和 `stroke` 字段；背景固定透明，不再使用 `background` 字段。
+- `defaults` defines shared rendering and motion settings.
+- `animations` enables each pair and overrides individual settings.
+- `out` selects the output directory, relative to the configuration file.
 
-尺寸调整保持内部 640 × 640 画布的比例。`view` 控制固定相机的观察方向，`rotation` 控制物体在世界坐标中的整体旋转，`light` 控制世界坐标中固定的光照。
-
-旋转配置位于 `defaults.rotation`，例如：
+For example, replace `animations.tetrahedron` with:
 
 ```json
 {
   "enabled": true,
-  "axis": [0.35, 1, -0.25],
-  "turns": 1
+  "seconds": 7,
+  "cutEasing": "smootherstep",
+  "rotation": { "axis": [0.35, 1, -0.25] }
 }
 ```
 
-每组动画也可单独覆盖旋转子字段，例如在 `animations.tetrahedron` 中增加 `"rotation": { "enabled": false }` 可关闭该组旋转，其余旋转设置仍继承公共配置。默认旋转速度约为每秒 31°；`turns` 为 `2` 时速度加倍。圈数要求为整数，以保证 SVG 重复播放时朝向连续。
+Overrides merge nested `rotation`, `hiddenEdges`, and theme palettes. Unlisted or disabled animations are skipped; existing files are kept. At least one animation must be enabled.
 
-默认旋转轴相对竖直方向倾斜约 23°，相机位于中心下方，仰视角约 11°。调整 `rotation.axis` 可以改变旋转倾斜程度；`view` 的第二个分量控制观察高度，负值为仰视、正值为俯视。投影仍保持正交。
+<details>
+<summary><strong>Full configuration reference</strong></summary>
 
-被遮挡的棱以较淡的虚线叠加在实体表面上，可见棱和轮廓棱保留实线。每条棱只生成一次；旋转中按相邻面的朝向判断遮挡，并在轮廓切换时同步更新。虚线沿用当前主题的棱线颜色，使用 `hiddenEdges.opacity` 单独控制强弱。
+All fields under `defaults` are required. Unknown fields and invalid values produce an error.
 
-`hiddenEdges` 支持公共配置和单组子字段覆盖。例如，在某组动画中增加 `"hiddenEdges": { "enabled": false }` 可关闭虚线，或使用 `"hiddenEdges": { "dash": [7, 4], "opacity": 0.7 }` 使虚线更明显。
-
-也可以指定另一份完整配置文件：
-
-```sh
-npm run generate -- --config my-animation.json
-```
-
-命令行可临时覆盖常用数值参数，优先级为 **命令行 > 单组动画配置 > defaults**：
-
-```sh
-npm run generate -- --out output --seconds 6 --hold 1 --samples 60 --size 800
-```
-
-| 参数 | 含义 | 未传入时 |
+| Field | Meaning | Default |
 | --- | --- | --- |
-| `--config` | 配置文件路径，相对于当前工作目录 | `polydual.config.json` |
-| `--out` | 输出目录，相对于当前工作目录 | 使用配置文件的 `out` |
-| `--seconds` | 每次切割所用的秒数，须大于 0 | 使用配置 |
-| `--hold` | 每个端点停留的秒数，可为 0 | 使用配置 |
-| `--samples` | 每秒几何采样数，正整数 | 使用配置 |
-| `--size` | SVG 宽高像素，正整数 | 使用配置 |
+| `seconds` | Seconds per cut; positive | `5` |
+| `hold` | Seconds held at each endpoint; nonnegative | `0.8` |
+| `cutEasing` | `smootherstep` or `linear` | `smootherstep` |
+| `samples` | Initial geometry samples per second; positive integer | `60` |
+| `size` | SVG width and height in pixels; positive integer | `640` |
+| `view` | Direction from center to viewer | `[4, -0.9, 2]` |
+| `light` | Direction from center to fixed world-space light | `[-3, 5, 6]` |
+| `colors.mode` | `auto`, `light`, or `dark` | `auto` |
+| `colors.light.fill` | Initial-solid color in light mode | `#5faf7d` |
+| `colors.light.dualFill` | Dual-solid color in light mode | `#d96b6b` |
+| `colors.light.stroke` | Edge color in light mode | `#33473d` |
+| `colors.dark.fill` | Initial-solid color in dark mode | `#8bd5a0` |
+| `colors.dark.dualFill` | Dual-solid color in dark mode | `#e87979` |
+| `colors.dark.stroke` | Edge color in dark mode | `#d8dee9` |
+| `strokeWidth` | Visible-edge width; nonnegative | `1.25` |
+| `hiddenEdges.enabled` | Show occluded edges as dashes | `true` |
+| `hiddenEdges.dash` | Positive dash and gap lengths | `[5, 4]` |
+| `hiddenEdges.opacity` | Hidden-edge opacity, from 0 to 1 | `0.5` |
+| `hiddenEdges.width` | Hidden-edge width; positive | `1` |
+| `rotation.enabled` | Rotate the solid | `true` |
+| `rotation.axis` | Nonzero axis through the center | `[0.35, 1, -0.25]` |
+| `rotation.turns` | Nonzero integer turns per loop; negative reverses direction | `1` |
 
-配置文件缺失、JSON 无效、字段拼错或参数无效时会报错，不自动回退到代码内的默认值。所有配置及动画数据生成完成后才开始写入输出文件。
+Vectors must be finite and nonzero; `view` cannot be parallel to the world Y axis. Colors accept opaque `#RGB` or `#RRGGBB`. Widths use internal 640 × 640 canvas units and scale with the image.
 
-降低采样数可以减小文件，但会增大关键帧之间的几何插值误差。旋转越快，通常需要越高的采样数。旋转前的切割几何在默认参数下，采样区间中点的位置误差检查限值为内部画布的 0.03 像素；旋转后的投影还单独检查了多个时刻的位置与可见性。
+The default axis is tilted about 23° from vertical, with an approximately 11° upward camera view. `view[1]` controls camera height: negative looks upward, positive looks downward.
 
-`samples` 控制初始几何采样密度。生成器随后按误差精简输出关键帧，浏览器仍在关键帧间连续插值；输出关键帧密度不等于实际播放 FPS。
+`auto` selects light/dark colors using `prefers-color-scheme`. For an embedded image, the host page's `color-scheme` can affect this selection; arbitrary surrounding background pixels are not sampled. Use a fixed mode when needed.
 
-## 几何与动画
+</details>
 
-1. 初始实体的外接球半径归一化为 1。每个顶点对应一个向中心等速移动的切割平面，保留包含中心的半空间。
-2. 设初始实体内切球半径为 `h`，切割平面到中心的距离从 `1` 线性减至 `h²`。此时剩余实体恰好为对偶正多面体，其未放大半径为 `h`；停止位置由几何关系确定。
-3. 枚举平面三元组的交点及其有效时间区间，在面的边数发生变化的位置分段，保证每段 SMIL 路径中的顶点一一对应。
-4. 每个采样时刻将剩余实体的外接球半径重新归一化为 1，施加整体三维旋转，再做固定斜视角的正交投影。根据旋转后的面朝向更新可见性和明暗；额外计算面转到轮廓边缘的时间，避免背面延迟隐藏。
-5. SVG 使用 SMIL 在投影采样结果之间线性插值。几何采样点满足半径归一化，采样点之间存在小量插值误差。
-6. 返程基于对偶实体的新顶点重新计算切割过程，不倒放去程。光源固定在世界坐标中，按面的空间朝向着色，使阶段衔接时颜色一致。
+Command-line values override animation settings, which override `defaults`:
 
-## SVG 精简
+```sh
+npm run generate -- --config polydual.config.json --out output --seconds 6 --hold 1 --samples 60 --size 800
+```
 
-生成器默认执行以下优化，无需修改配置：
+`--config` and `--out` are relative to the current working directory. Configuration-file `out` is relative to that file. Run `npm run generate -- --help` for all flags.
 
-- 删除在所属阶段的整个显示区间内始终不可见的面和虚线棱。仅在区间中途变为可见的内容会完整保留。
-- 将整个阶段内恒定的可见性和阴影不透明度改为静态属性，减少 SMIL 动画元素。
-- 对所有顶点的投影轨迹和阴影共同进行关键帧精简，保留端点停留边界、切割阶段边界及面朝向切换事件。
-- 路径坐标保留两位小数。所有面与棱使用同一套关键帧，保持共享顶点和棱的运动一致。
+## Compact SVGs
 
-关键帧精简的位置误差预算为内部 640 × 640 画布的 `0.04` 像素，坐标取整最多再增加约 `0.0071` 像素；相对原始采样轨迹的总位置误差控制在 `0.05` 像素内。阴影不透明度的精简误差不超过 `0.002`。这些预算针对初始采样轨迹，不包括它与连续几何之间已有的采样误差；放大 SVG 时位置误差随画面同比缩放。
+The generator removes content that stays invisible throughout its stage, replaces constant animation tracks with static attributes, and simplifies shared geometry/lighting keyframes. Stage boundaries, holds, and silhouette events are retained.
 
-当前默认配置下，三个文件合计约从 13.10 MB 降到 3.39 MB，十二面体／二十面体的动画元素从 1,108 个减少到 628 个。数据量和动画节点减少有助于降低播放负担，实际 FPS 仍取决于浏览器和设备，需要单独测量。
+The simplification budget is **0.04 internal pixels**, plus at most about **0.0071 pixels** from two-decimal coordinate rounding. Relative to the initial sampled trajectories, total position error stays below **0.05 pixels** and opacity error stays within **0.002**. Initial sampling error is separate; positional errors scale with displayed size.
 
-## 检查
+`samples: 60` describes the initial sampling density. Browsers continuously interpolate the exported keyframes; actual playback FPS depends on the browser and device.
+
+## Verification
 
 ```sh
 npm test
 ```
 
-检查三组往返变换的顶点与面数量、棱长、欧拉关系、切割半空间约束、面共面性、半径归一化、分段衔接、循环朝向，以及 SMIL 路径格式、时间序列和统一无限循环设置。还检查旋转方向、刚体距离、正反转的轮廓切换、旋转后的投影、背面隐藏、动态光照、暂停切割期间的旋转、配色继承、主题规则，以及可见文字和背景图层的移除。虚线检查包含棱去重、闭合网格关系，以及从棱中点向观察者发射射线的独立遮挡判断。
+Checks cover regular dual endpoints, clipping constraints, planar faces, radius normalization, rotation, hidden-edge occlusion, color continuity, complete loop timing, easing and inverse topology timing, SMIL validity, and bounded optimization error. Linear, eased, stationary, and reverse-rotation cases are included.
 
-精简回归检查覆盖静止视角、倾斜正转、反转及零端点停留，验证整段可见性、所有原始关键帧处的轨迹与阴影误差、阶段显示区间、轮廓事件和 SVG 引用。开发对照可调用 `renderSVG(item, options, false)` 生成未精简版本；命令行始终输出默认精简版本。
-
-源码：`src/config.ts` 负责配置加载与校验，`src/geometry.ts` 负责切割几何和文件名，`src/motion.ts` 负责旋转与轮廓事件，`src/optimize.ts` 负责轨迹精简，`src/svg.ts` 负责投影与动画，`src/generate.ts` 提供命令行入口。
+| Source | Responsibility |
+| --- | --- |
+| [geometry.ts](src/geometry.ts) | Convex geometry, clipping stages, file naming |
+| [motion.ts](src/motion.ts) | Easing, inverse timing, rotation, silhouette events |
+| [optimize.ts](src/optimize.ts) | Visibility windows and bounded keyframe simplification |
+| [svg.ts](src/svg.ts) | Projection, colors, lighting, SMIL export |
+| [config.ts](src/config.ts) · [generate.ts](src/generate.ts) | Validation and command-line generation |

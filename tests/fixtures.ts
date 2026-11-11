@@ -3,6 +3,7 @@ import type { Options } from "../src/config.ts";
 // Fixed reference settings keep geometric accuracy tests independent of user edits.
 export const referenceOptions: Options = {
   seconds: 5, hold: 0.8, samples: 60, size: 640,
+  cutEasing: "smootherstep",
   view: [4, 1.5, 2], light: [-3, 5, 6], strokeWidth: 1.25,
   colors: {
     mode: "auto",

@@ -21,7 +21,7 @@ test("config: common settings, animation overrides, CLI precedence and path base
   const dir = await temporary(t), file = resolve(dir, "settings.json");
   const config = referenceConfig();
   config.defaults.seconds = 6;
-  Object.assign(config.animations.tetrahedron, { seconds: 8, view: [3, 2, 4], rotation: { enabled: true }, hiddenEdges: { opacity: 0.3 }, colors: { dark: { fill: "#ffcc00" } } });
+  Object.assign(config.animations.tetrahedron, { seconds: 8, cutEasing: "linear", view: [3, 2, 4], rotation: { enabled: true }, hiddenEdges: { opacity: 0.3 }, colors: { dark: { fill: "#ffcc00" } } });
   config.animations["dodecahedron-icosahedron"].enabled = false;
   await writeFile(file, JSON.stringify(config));
   const loaded = await loadConfig(file);
@@ -29,6 +29,8 @@ test("config: common settings, animation overrides, CLI precedence and path base
   assert.deepEqual(loaded.jobs.map(j => j.item.id), ["tetrahedron", "cube-octahedron"]);
   assert.equal(loaded.jobs[0].options.seconds, 8);
   assert.equal(loaded.jobs[1].options.seconds, 6);
+  assert.equal(loaded.jobs[0].options.cutEasing, "linear");
+  assert.equal(loaded.jobs[1].options.cutEasing, "smootherstep");
   assert.deepEqual(loaded.jobs[0].options.view, [3, 2, 4]);
   assert.deepEqual(loaded.jobs[1].options.view, config.defaults.view);
   assert.deepEqual(loaded.jobs[0].options.rotation, { enabled: true, axis: [0, 1, 0], turns: 1 });
@@ -54,6 +56,8 @@ test("config: missing, malformed and invalid settings fail clearly", async t => 
     ["enabled type", c => c.animations.tetrahedron.enabled = "yes", /enabled 必须是布尔值/],
     ["no enabled jobs", c => Object.values(c.animations).forEach((v: any) => v.enabled = false), /至少需要启用/],
     ["negative time", c => c.defaults.seconds = -1, /seconds 必须大于 0/],
+    ["missing easing", c => delete c.defaults.cutEasing, /cutEasing 未配置/],
+    ["unknown easing", c => c.defaults.cutEasing = "smooth", /cutEasing 必须是/],
     ["fractional samples", c => c.defaults.samples = 2.5, /samples 必须是正整数/],
     ["zero view", c => c.defaults.view = [0, 0, 0], /非零向量/],
     ["parallel view", c => c.defaults.view = [0, 2, 0], /不能与竖直方向/],
