@@ -10,6 +10,7 @@ export const referenceOptions: Options = {
     dark: { fill: "#91cbf2", dualFill: "#ffc394", stroke: "#d6e8f5" },
   },
   rotation: { enabled: false, axis: [0, 1, 0], turns: 1 },
+  hiddenEdges: { enabled: true, dash: [5, 4], opacity: 0.5, width: 1 },
 };
 
 export function referenceConfig() {

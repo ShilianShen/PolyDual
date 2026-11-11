@@ -10,9 +10,15 @@
     "colors": {
       "mode": "auto",
       "light": { "fill": "#7db8e0", "dualFill": "#eea771", "stroke": "#243746" },
-      "dark": { "fill": "#91cbf2", "dualFill": "#ffc394", "stroke": "#d6e8f5" }
+      "dark": { "fill": "#8bd5a0", "dualFill": "#e87979", "stroke": "#d8dee9" }
     },
     "strokeWidth": 1.25,
+    "hiddenEdges": {
+      "enabled": true,
+      "dash": [5, 4],
+      "opacity": 0.5,
+      "width": 1
+    },
     "rotation": {
       "enabled": true,
       "axis": [0.35, 1, -0.25],
@@ -23,8 +29,7 @@
     "tetrahedron": {
       "enabled": true,
       "colors": {
-        "light": { "fill": "#59cbb0", "dualFill": "#b19bef" },
-        "dark": { "fill": "#7ce8ce", "dualFill": "#c5b2ff" }
+        "light": { "fill": "#59cbb0", "dualFill": "#b19bef" }
       }
     },
     "cube-octahedron": {
@@ -33,8 +38,7 @@
     "dodecahedron-icosahedron": {
       "enabled": true,
       "colors": {
-        "light": { "fill": "#e4b56e", "dualFill": "#dc879e" },
-        "dark": { "fill": "#f6cd8d", "dualFill": "#f6a2ba" }
+        "light": { "fill": "#e4b56e", "dualFill": "#dc879e" }
       }
     }
   }

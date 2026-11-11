@@ -1,4 +1,4 @@
-import { cross, dot, initialSolids, normalizedPoints, transition, unit } from "./geometry.ts";
+import { cross, dot, initialSolids, normalizedPoints, stageEdges, transition, unit } from "./geometry.ts";
 import type { Stage, Vec } from "./geometry.ts";
 import type { Options } from "./config.ts";
 import { rotate, silhouetteTimes, uniqueTimes } from "./motion.ts";
@@ -27,6 +27,17 @@ function facing(normal: Vec, view: Vec, options: Options): { initial: string; an
   const values = times.map((t, i) => {
     const mid = i < times.length - 1 ? (t + times[i + 1]) / 2 : (times[i - 1] + t) / 2;
     return dot(rotate(normal, options.rotation, mid), view) > 1e-10 ? "visible" : "hidden";
+  });
+  return { initial: values[0], animation: animation("visibility", values, times, 2 * (options.hold + options.seconds), "discrete") };
+}
+
+function hiddenFacing(normals: Vec[], view: Vec, options: Options): { initial: string; animation: string } {
+  const times = uniqueTimes([0, ...normals.flatMap(n => silhouetteTimes(n, view, options.rotation)), 1]);
+  const values = times.map((t, i) => {
+    const mid = i < times.length - 1 ? (t + times[i + 1]) / 2 : (times[i - 1] + t) / 2;
+    // In a convex solid, an edge is occluded only if both incident faces
+    // point away from the viewer. Silhouette edges remain solid.
+    return normals.every(n => dot(rotate(n, options.rotation, mid), view) < -1e-10) ? "visible" : "hidden";
   });
   return { initial: values[0], animation: animation("visibility", values, times, 2 * (options.hold + options.seconds), "discrete") };
 }
@@ -76,8 +87,14 @@ function stageSVG(stage: Stage, half: number, first: boolean, options: Options, 
     // supplies a black lighting layer. Both share the same animated geometry.
     return `<path d="${ds[0]}" id="${id}" class="polydual-${dual ? "dual" : "primary"}" visibility="${visibility.initial}">${animation("d", ds, times, duration)}${visibility.animation}</path><use href="#${id}" fill="#000" stroke="none" opacity="${shades[0]}">${animation("opacity", shades, times, duration)}</use>`;
   });
+  const hidden = options.hiddenEdges;
+  const hiddenPaths = hidden.enabled ? stageEdges(stage).map(edge => {
+    const ds = frames.map(points => path(points, edge.vertices, right, up).replace(/ Z$/, ""));
+    const visibility = hiddenFacing(edge.faces.map(i => stage.faces[i].normal), view, options);
+    return `<path class="polydual-hidden-edge" d="${ds[0]}" fill="none" stroke-dasharray="${hidden.dash.join(" ")}" stroke-width="${hidden.width}" opacity="${hidden.opacity}" visibility="${visibility.initial}">${animation("d", ds, times, duration)}${visibility.animation}</path>`;
+  }) : [];
   // display:none suppresses descendants even if their own visibility is visible.
-  return `<g display="${first ? "inline" : "none"}" class="polydual-mesh" fill="currentColor" stroke-width="${options.strokeWidth}" stroke-linejoin="round">${display(visibleStart, cutEnd, duration)}\n${paths.join("\n")}\n</g>`;
+  return `<g display="${first ? "inline" : "none"}" class="polydual-mesh" fill="currentColor" stroke-width="${options.strokeWidth}" stroke-linejoin="round">${display(visibleStart, cutEnd, duration)}\n${paths.join("\n")}\n${hiddenPaths.join("\n")}\n</g>`;
 }
 
 export function renderSVG(item: ReturnType<typeof initialSolids>[number], options: Options): string {

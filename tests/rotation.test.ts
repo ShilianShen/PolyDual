@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { cross, dot, initialSolids, length, normalizedPoints, sub, transition, unit } from "../src/geometry.ts";
+import { add, cross, dot, initialSolids, length, normalizedPoints, scale, stageEdges, sub, transition, unit } from "../src/geometry.ts";
 import type { Vec } from "../src/geometry.ts";
 import { rotate, silhouetteTimes, uniqueTimes } from "../src/motion.ts";
 import { renderSVG } from "../src/svg.ts";
@@ -51,7 +51,7 @@ function track(markup: string, attribute: string, t: number): string {
 }
 
 for (const item of initialSolids()) {
-  test(`${item.id}: rotating SVG projects the cut, updates lighting and hides back faces`, () => {
+  test(`${item.id}: rotating SVG projects the cut, updates lighting and dashes occluded edges`, () => {
     const options = { ...referenceOptions, view: [4, -0.9, 2] as Vec, rotation: { enabled: true, axis: [0.35, 1, -0.25] as Vec, turns: 1 } };
     const svg = renderSVG(item, options);
     const groups = [...svg.matchAll(/<g display="[^>]*>(.*?)<\/g>/gs)].map(m => m[1]);
@@ -65,7 +65,7 @@ for (const item of initialSolids()) {
       const i = active[0], { stage, half } = stages[i];
       const progress = Math.max(stage.start, Math.min(stage.end, (t * duration - half * duration / 2 - options.hold) / options.seconds));
       const points = normalizedPoints(stage, progress).map(p => rotate(p, options.rotation, t));
-      const paths = [...groups[i].matchAll(/<path\b[^>]*>(.*?)<\/path>/gs)].map(m => m[1]);
+      const paths = [...groups[i].matchAll(/<path\b[^>]*class="polydual-(?:primary|dual)"[^>]*>(.*?)<\/path>/gs)].map(m => m[1]);
       let visible = 0;
       paths.forEach((path, faceIndex) => {
         const face = stage.faces[faceIndex];
@@ -78,14 +78,44 @@ for (const item of initialSolids()) {
         assert.ok(actual.every((v, n) => Math.abs(v - expected[n]) < 0.05), `Projected geometry at t=${t}`);
       });
       assert.ok(visible > 0);
+      const edges = stageEdges(stage);
+      const hiddenPaths = [...groups[i].matchAll(/<path class="polydual-hidden-edge"[^>]*>(.*?)<\/path>/gs)].map(m => m[1]);
+      assert.equal(hiddenPaths.length, edges.length);
+      assert.equal(edges.length, stage.vertices.length + stage.faces.length - 2);
+      assert.equal(new Set(edges.map(e => e.vertices.join(","))).size, edges.length);
+      edges.forEach((edge, edgeIndex) => {
+        const [a, b] = edge.vertices;
+        const expected = [points[a], points[b]].flatMap(p => [320 + 225 * dot(p, right), 320 - 225 * dot(p, up)]);
+        const actual = track(hiddenPaths[edgeIndex], "d", t).split(",").map(Number);
+        assert.ok(actual.every((v, n) => Math.abs(v - expected[n]) < 0.05));
+        if (length(sub(points[a], points[b])) < 1e-7) return;
+        // Independent occlusion oracle: trace a ray from the edge midpoint
+        // toward the camera. A positive exit distance means a face covers it.
+        const midpoint = scale(add(points[a], points[b]), 0.5);
+        let exit = Infinity;
+        for (const face of stage.faces) {
+          const normal = rotate(face.normal, options.rotation, t);
+          const denominator = dot(normal, view);
+          if (denominator > 1e-8) {
+            exit = Math.min(exit, dot(normal, sub(points[face.vertices[0]], midpoint)) / denominator);
+          }
+        }
+        assert.equal(track(hiddenPaths[edgeIndex], "visibility", t), exit > 1e-7 ? "visible" : "hidden", `Occluded edge ${edgeIndex} at t=${t}`);
+      });
     }
-    const firstPaths = [...groups[0].matchAll(/<path\b[^>]*>(.*?)<\/path>/gs)].map(m => m[1]);
+    const firstPaths = [...groups[0].matchAll(/<path\b[^>]*class="polydual-(?:primary|dual)"[^>]*>(.*?)<\/path>/gs)].map(m => m[1]);
     const firstPath = firstPaths[0];
     assert.notEqual(track(firstPath, "d", 0), track(firstPath, "d", options.hold / duration / 2), "Rotation continues during a cutting hold");
     const shades = [...groups[0].matchAll(/<use\b[^>]*>(.*?)<\/use>/gs)].map(m => m[1]);
     assert.ok(shades.some(p => track(p, "opacity", 0) !== track(p, "opacity", 0.1)), "World-fixed light changes face brightness");
   });
 }
+
+test("hidden edges: disabling the overlay retains solid faces and their outlines", () => {
+  const svg = renderSVG(initialSolids()[0], { ...referenceOptions, hiddenEdges: { ...referenceOptions.hiddenEdges, enabled: false } });
+  assert.doesNotMatch(svg, /polydual-hidden-edge|stroke-dasharray/);
+  assert.match(svg, /class="polydual-primary"/);
+});
 
 for (const item of initialSolids()) {
   test(`${item.id}: endpoint colors persist across both cuts and the loop boundary`, () => {

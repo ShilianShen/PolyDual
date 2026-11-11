@@ -8,9 +8,10 @@ export type Options = {
   view: Vec; light: Vec; strokeWidth: number;
   colors: { mode: "auto" | "light" | "dark"; light: Palette; dark: Palette };
   rotation: { enabled: boolean; axis: Vec; turns: number };
+  hiddenEdges: { enabled: boolean; dash: [number, number]; opacity: number; width: number };
 };
 type Palette = { fill: string; dualFill: string; stroke: string };
-const optionKeys = ["seconds", "hold", "samples", "size", "view", "light", "strokeWidth", "rotation", "colors"];
+const optionKeys = ["seconds", "hold", "samples", "size", "view", "light", "strokeWidth", "rotation", "colors", "hiddenEdges"];
 
 function object(value: unknown, path: string): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${path} 必须是对象`);
@@ -51,6 +52,14 @@ export function validateOptions(value: unknown, path: string): Options {
   if (typeof rotation.enabled !== "boolean") throw new Error(`${path}.rotation.enabled 必须是布尔值`);
   if (!Number.isSafeInteger(rotation.turns) || rotation.turns === 0) throw new Error(`${path}.rotation.turns 必须是非零整数，以保证循环衔接`);
   const axis = vector(rotation.axis, `${path}.rotation.axis`);
+  const hidden = object(v.hiddenEdges, `${path}.hiddenEdges`);
+  keys(hidden, ["enabled", "dash", "opacity", "width"], `${path}.hiddenEdges`);
+  if (typeof hidden.enabled !== "boolean") throw new Error(`${path}.hiddenEdges.enabled 必须是布尔值`);
+  if (!Array.isArray(hidden.dash) || hidden.dash.length !== 2 || !hidden.dash.every(n => typeof n === "number" && Number.isFinite(n) && n > 0)) {
+    throw new Error(`${path}.hiddenEdges.dash 必须包含两个大于 0 的有限数值`);
+  }
+  if (typeof hidden.opacity !== "number" || !Number.isFinite(hidden.opacity) || hidden.opacity < 0 || hidden.opacity > 1) throw new Error(`${path}.hiddenEdges.opacity 必须在 0 到 1 之间`);
+  if (typeof hidden.width !== "number" || !Number.isFinite(hidden.width) || hidden.width <= 0) throw new Error(`${path}.hiddenEdges.width 必须大于 0`);
   if (length(cross([0, 1, 0], unit(view))) < 1e-8) throw new Error(`${path}.view 不能与竖直方向 [0, 1, 0] 平行`);
   const colors = object(v.colors, `${path}.colors`);
   keys(colors, ["mode", "light", "dark"], `${path}.colors`);
@@ -99,6 +108,9 @@ function mergeOptions(base: Options, overrides: Record<string, unknown>, path: s
     rotation: Object.hasOwn(overrides, "rotation")
       ? { ...base.rotation, ...object(overrides.rotation, `${path}.rotation`) }
       : base.rotation,
+    hiddenEdges: Object.hasOwn(overrides, "hiddenEdges")
+      ? { ...base.hiddenEdges, ...object(overrides.hiddenEdges, `${path}.hiddenEdges`) }
+      : base.hiddenEdges,
   };
 }
 

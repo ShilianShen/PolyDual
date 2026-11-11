@@ -10,6 +10,7 @@ export type Stage = {
   faces: { normal: Vec; vertices: number[]; kind: "original" | "cut" }[];
 };
 export type Transition = { source: Solid; target: Solid; stop: number; stages: Stage[] };
+export type Edge = { vertices: [number, number]; faces: [number, number] };
 const EPS = 1e-8;
 
 export const add = (a: Vec, b: Vec): Vec => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
@@ -140,4 +141,22 @@ export function normalizedPoints(stage: Stage, t: number): Vec[] {
   const points = stage.vertices.map(v => position(v, t));
   const radius = Math.max(...points.map(length));
   return points.map(v => scale(v, 1 / radius));
+}
+
+export function stageEdges(stage: Stage): Edge[] {
+  const edges = new Map<string, { vertices: [number, number]; faces: number[] }>();
+  stage.faces.forEach((face, faceIndex) => {
+    face.vertices.forEach((a, i) => {
+      const b = face.vertices[(i + 1) % face.vertices.length];
+      const vertices: [number, number] = a < b ? [a, b] : [b, a];
+      const key = vertices.join(",");
+      const edge = edges.get(key) ?? { vertices, faces: [] };
+      edge.faces.push(faceIndex);
+      edges.set(key, edge);
+    });
+  });
+  return [...edges.values()].map(edge => {
+    if (edge.faces.length !== 2) throw new Error("Expected exactly two adjacent faces for each convex-solid edge");
+    return { vertices: edge.vertices, faces: [edge.faces[0], edge.faces[1]] };
+  });
 }

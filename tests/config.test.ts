@@ -21,7 +21,7 @@ test("config: common settings, animation overrides, CLI precedence and path base
   const dir = await temporary(t), file = resolve(dir, "settings.json");
   const config = referenceConfig();
   config.defaults.seconds = 6;
-  Object.assign(config.animations.tetrahedron, { seconds: 8, view: [3, 2, 4], rotation: { enabled: true }, colors: { dark: { fill: "#ffcc00" } } });
+  Object.assign(config.animations.tetrahedron, { seconds: 8, view: [3, 2, 4], rotation: { enabled: true }, hiddenEdges: { opacity: 0.3 }, colors: { dark: { fill: "#ffcc00" } } });
   config.animations["dodecahedron-icosahedron"].enabled = false;
   await writeFile(file, JSON.stringify(config));
   const loaded = await loadConfig(file);
@@ -32,6 +32,7 @@ test("config: common settings, animation overrides, CLI precedence and path base
   assert.deepEqual(loaded.jobs[0].options.view, [3, 2, 4]);
   assert.deepEqual(loaded.jobs[1].options.view, config.defaults.view);
   assert.deepEqual(loaded.jobs[0].options.rotation, { enabled: true, axis: [0, 1, 0], turns: 1 });
+  assert.deepEqual(loaded.jobs[0].options.hiddenEdges, { ...config.defaults.hiddenEdges, opacity: 0.3 });
   assert.equal(loaded.jobs[0].options.colors.dark.fill, "#ffcc00");
   assert.equal(loaded.jobs[0].options.colors.dark.stroke, config.defaults.colors.dark.stroke);
   assert.equal(loaded.jobs[0].options.colors.dark.dualFill, config.defaults.colors.dark.dualFill);
@@ -69,6 +70,11 @@ test("config: missing, malformed and invalid settings fail clearly", async t => 
     ["nonclosing rotation", c => c.defaults.rotation.turns = 0.5, /turns 必须是非零整数/],
     ["unknown rotation field", c => c.defaults.rotation.speed = 1, /speed 是未知配置项/],
     ["rotation flag type", c => c.defaults.rotation.enabled = "yes", /rotation.enabled 必须是布尔值/],
+    ["invalid dash length", c => c.defaults.hiddenEdges.dash = [0, 4], /hiddenEdges.dash/],
+    ["invalid edge opacity", c => c.defaults.hiddenEdges.opacity = 1.1, /hiddenEdges.opacity/],
+    ["invalid edge width", c => c.defaults.hiddenEdges.width = -1, /hiddenEdges.width/],
+    ["invalid edge flag", c => c.defaults.hiddenEdges.enabled = "yes", /hiddenEdges.enabled/],
+    ["unknown edge field", c => c.defaults.hiddenEdges.typo = 1, /typo 是未知配置项/],
   ];
   for (const [name, mutate, pattern] of invalid) {
     const c = referenceConfig(); mutate(c);
