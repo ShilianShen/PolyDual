@@ -67,7 +67,7 @@ The polar dual is
 \begin{aligned}
 P^\circ
 &=\left\{\mathbf{y}:\mathbf{v}_i^\top\mathbf{y}\le1,\ i=1,\ldots,M\right\} \\
-&=\operatorname{conv}\left\{\frac{\mathbf{n}_f}{h}\right\}_{f=1}^{N}.
+&=\mathrm{conv}\left\{\frac{\mathbf{n}_f}{h}\right\}_{f=1}^{N}.
 \end{aligned}
 ```
 
@@ -75,7 +75,7 @@ At cutting-plane distance $`d=h^2`$, the new half-spaces enclose
 
 ```math
 \begin{aligned}
-h^2P^\circ&=\operatorname{conv}\{h\mathbf{n}_f\}_{f=1}^{N}\subseteq P, \\
+h^2P^\circ&=\mathrm{conv}\{h\mathbf{n}_f\}_{f=1}^{N}\subseteq P, \\
 K(1)&=h^2P^\circ.
 \end{aligned}
 ```
@@ -120,7 +120,7 @@ To keep the solid from shrinking, normalize each intermediate vertex by the curr
 
 ```math
 \begin{aligned}
-r(u)&=\max_{\mathbf{x}\in\operatorname{vert}K(u)}\lVert\mathbf{x}\rVert_2, \\
+r(u)&=\max_{\mathbf{x}\in\mathrm{vert}K(u)}\lVert\mathbf{x}\rVert_2, \\
 \widehat{\mathbf{x}}&=\frac{\mathbf{x}}{r(u)}.
 \end{aligned}
 ```
