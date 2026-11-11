@@ -11,6 +11,7 @@ export type Stage = {
 };
 export type Transition = { source: Solid; target: Solid; stop: number; stages: Stage[] };
 export type Edge = { vertices: [number, number]; faces: [number, number] };
+export const artifactName = (solid: Solid): string => `D3_N${solid.faces.length}_M${solid.vertices.length}`;
 const EPS = 1e-8;
 
 export const add = (a: Vec, b: Vec): Vec => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];

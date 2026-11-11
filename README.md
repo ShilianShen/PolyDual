@@ -4,17 +4,19 @@
 
 ## 运行
 
-需要 **Node.js 24 或更新版本**，利用 Node.js 自带的 TypeScript 类型擦除直接执行脚本。无需安装依赖。
+需要 **Node.js 24 或更新版本**，利用 Node.js 自带的 TypeScript 类型擦除直接执行脚本，无需安装依赖。
 
 ```sh
 npm run generate
 ```
 
-生成文件：
+文件名为 `D维度_N面数_M顶点数`，计数以每组的初始多面体为准。配置中的动画 ID 保持不变，生成文件使用以下名称：
 
-- [正四面体 ↔ 对偶正四面体](output/tetrahedron.svg)
-- [立方体 ↔ 正八面体](output/cube-octahedron.svg)
-- [正十二面体 ↔ 正二十面体](output/dodecahedron-icosahedron.svg)
+| 变换 | SVG（自动主题） |
+| --- | --- |
+| 四面体 ↔ 对偶四面体 | [D3_N4_M4.svg](output/D3_N4_M4.svg) |
+| 立方体 ↔ 八面体 | [D3_N6_M8.svg](output/D3_N6_M8.svg) |
+| 十二面体 ↔ 二十面体 | [D3_N12_M20.svg](output/D3_N12_M20.svg) |
 
 使用支持 SVG/SMIL 的浏览器直接打开文件即可播放。文件内包含全部几何和动画数据，不依赖 JavaScript、外部资源或网络。
 
@@ -40,7 +42,7 @@ SVG 画面只包含多面体，没有可见文字或背景图层，背景始终�
   "seconds": 8,
   "view": [3, 2, 4],
   "colors": {
-    "light": { "fill": "#59cbb0", "dualFill": "#b19bef" },
+    "light": { "fill": "#5faf7d", "dualFill": "#d96b6b" },
     "dark": { "fill": "#8bd5a0", "dualFill": "#e87979" }
   }
 }
@@ -57,9 +59,9 @@ SVG 画面只包含多面体，没有可见文字或背景图层，背景始终�
 | `view` | 从中心指向观察者的方向向量，固定正交投影 | `[4, -0.9, 2]` |
 | `light` | 从中心指向光源的方向向量 | `[-3, 5, 6]` |
 | `colors.mode` | 配色模式：`auto`、`light` 或 `dark` | `"auto"` |
-| `colors.light.fill` | 浅色主题下初始多面体的基色 | `"#7db8e0"` |
-| `colors.light.dualFill` | 浅色主题下对偶多面体的基色 | `"#eea771"` |
-| `colors.light.stroke` | 浅色主题下的棱线色 | `"#243746"` |
+| `colors.light.fill` | 浅色主题下初始多面体的基色 | `"#5faf7d"` |
+| `colors.light.dualFill` | 浅色主题下对偶多面体的基色 | `"#d96b6b"` |
+| `colors.light.stroke` | 浅色主题下的棱线色 | `"#33473d"` |
 | `colors.dark.fill` | 深色主题下初始多面体的基色 | `"#8bd5a0"` |
 | `colors.dark.dualFill` | 深色主题下对偶多面体的基色 | `"#e87979"` |
 | `colors.dark.stroke` | 深色主题下的棱线色 | `"#d8dee9"` |
@@ -76,7 +78,7 @@ SVG 画面只包含多面体，没有可见文字或背景图层，背景始终�
 
 `colors.mode: "auto"` 使用 SVG 内部的 `prefers-color-scheme` 媒体查询选择配色，直接打开时跟随系统或浏览器明暗偏好；通过 `<img>` 嵌入时可跟随宿主的 `color-scheme`。它不读取周围背景的像素颜色；需要为指定背景固定配色时，将 `mode` 设为 `light` 或 `dark`。参见 [MDN 的 SVG 主题继承说明](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@media/prefers-color-scheme#embedded_elements)。
 
-每组动画可只覆盖需要修改的颜色子字段，其余继承 `defaults.colors`。浅色主题中，四面体与其对偶使用绿／紫，立方体与八面体使用蓝／橙，十二面体与二十面体使用金／玫红。
+每组动画可只覆盖需要修改的颜色子字段，其余继承 `defaults.colors`。浅色主题与深色主题一样统一采用绿色／红色，使用较深的基色和深灰绿棱线，以适应明亮背景；三组动画共享同一套配色。
 
 深色主题统一采用绿色／红色配色：三组动画的初始多面体均使用绿色 `#8bd5a0`，对偶多面体均使用柔和红色 `#e87979`，棱线使用中性灰白 `#d8dee9`。各组继承公共深色配色，保留光照阴影、实线与虚线的层次。两套主题均保持对偶双方的双色归属。
 
@@ -163,4 +165,4 @@ npm test
 
 精简回归检查覆盖静止视角、倾斜正转、反转及零端点停留，验证整段可见性、所有原始关键帧处的轨迹与阴影误差、阶段显示区间、轮廓事件和 SVG 引用。开发对照可调用 `renderSVG(item, options, false)` 生成未精简版本；命令行始终输出默认精简版本。
 
-源码：`src/config.ts` 负责配置加载与校验，`src/geometry.ts` 负责切割几何，`src/motion.ts` 负责旋转与轮廓事件，`src/optimize.ts` 负责可见性区间判断与轨迹精简，`src/svg.ts` 负责投影与动画，`src/generate.ts` 提供命令行入口。
+源码：`src/config.ts` 负责配置加载与校验，`src/geometry.ts` 负责切割几何和文件名，`src/motion.ts` 负责旋转与轮廓事件，`src/optimize.ts` 负责轨迹精简，`src/svg.ts` 负责投影与动画，`src/generate.ts` 提供命令行入口。

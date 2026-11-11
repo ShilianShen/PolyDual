@@ -9,7 +9,7 @@
     "light": [-3, 5, 6],
     "colors": {
       "mode": "auto",
-      "light": { "fill": "#7db8e0", "dualFill": "#eea771", "stroke": "#243746" },
+      "light": { "fill": "#5faf7d", "dualFill": "#d96b6b", "stroke": "#33473d" },
       "dark": { "fill": "#8bd5a0", "dualFill": "#e87979", "stroke": "#d8dee9" }
     },
     "strokeWidth": 1.25,
@@ -26,20 +26,10 @@
     }
   },
   "animations": {
-    "tetrahedron": {
-      "enabled": true,
-      "colors": {
-        "light": { "fill": "#59cbb0", "dualFill": "#b19bef" }
-      }
-    },
+    "tetrahedron": { "enabled": true },
     "cube-octahedron": {
       "enabled": true
     },
-    "dodecahedron-icosahedron": {
-      "enabled": true,
-      "colors": {
-        "light": { "fill": "#e4b56e", "dualFill": "#dc879e" }
-      }
-    }
+    "dodecahedron-icosahedron": { "enabled": true }
   }
 }

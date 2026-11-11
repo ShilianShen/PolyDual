@@ -136,8 +136,8 @@ test("CLI: custom config generates only enabled files and rejects invalid config
   const entry = fileURLToPath(new URL("../src/generate.ts", import.meta.url));
   const result = spawnSync(process.execPath, [entry, "--config", file, "--seconds", "2", "--size", "800"], { cwd: dir, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(await readdir(resolve(dir, "output")), ["tetrahedron.svg"]);
-  const svg = await readFile(resolve(dir, "output/tetrahedron.svg"), "utf8");
+  assert.deepEqual(await readdir(resolve(dir, "output")), ["D3_N4_M4.svg"]);
+  const svg = await readFile(resolve(dir, "output/D3_N4_M4.svg"), "utf8");
   assert.match(svg, /width="800"/);
   assert.match(svg, /dur="5.6s"/);
   c.defaults.view = [0, 0, 0]; c.out = "must-not-exist";

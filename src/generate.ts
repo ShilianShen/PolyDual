@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { loadConfig, parseArgs } from "./config.ts";
 import { renderSVG } from "./svg.ts";
+import { artifactName } from "./geometry.ts";
 
 const usage = `用法：npm run generate -- [选项]
   --config FILE   配置文件（默认当前目录的 polydual.config.json）
@@ -16,9 +17,10 @@ try {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) { console.log(usage); process.exit(0); }
   const { directory, jobs } = await loadConfig(args.config, args.overrides, args.out);
-  const outputs = jobs.map(({ item, options }) => ({ file: resolve(directory, `${item.id}.svg`), svg: renderSVG(item, options) }));
+  const outputs = jobs.map(({ item, options }) => ({ name: artifactName(item.solid), svg: renderSVG(item, options) }));
   await mkdir(directory, { recursive: true });
-  for (const { file, svg } of outputs) {
+  for (const { name, svg } of outputs) {
+    const file = resolve(directory, `${name}.svg`);
     await writeFile(file, svg);
     console.log(`已生成 ${file}`);
   }
