@@ -44,45 +44,49 @@ Green identifies the initial solid's faces; red identifies its dual's faces. Exi
 
 ### 1. A solid as an intersection of half-spaces
 
-Place a convex regular polyhedron $P$ at the origin and normalize its circumradius to $1$. Let $\mathbf v_i$ be its unit vertex vectors, $\mathbf n_f$ its outward unit face normals, and $h$ its inradius. Then
+Place a convex regular polyhedron $`P`$ at the origin and normalize its circumradius to $`1`$. Let $`\mathbf{v}_i`$ be its unit vertex vectors, $`\mathbf{n}_f`$ its outward unit face normals, and $`h`$ its inradius. Then
 
-$$
-P=\bigcap_{f=1}^{N}\left\{\mathbf x\in\mathbb R^3:\mathbf n_f^\top\mathbf x\le h\right\}.
-$$
+```math
+P=\bigcap_{f=1}^{N}\left\{\mathbf{x}\in\mathbb{R}^3:\mathbf{n}_f^\top\mathbf{x}\le h\right\}.
+```
 
 Each vertex supplies a cutting plane perpendicular to its radius. The plane starts at that vertex, and the half-space containing the center is retained. The remaining solid is
 
-$$
+```math
 K(u)=P\cap\bigcap_{i=1}^{M}
-\left\{\mathbf x:\mathbf v_i^\top\mathbf x\le d(u)\right\},
-\qquad 0\le u\le1.
-$$
+\left\{\mathbf{x}:\mathbf{v}_i^\top\mathbf{x}\le d(u)\right\}.
+```
 
-Here $u$ is the elapsed fraction of **one complete cut**, excluding its endpoint hold.
+Here $`u`$ is the elapsed fraction of **one complete cut**, with $`0\le u\le1`$; endpoint holds are excluded.
 
-### 2. Why the cut stops at $h^2$
+### 2. Why the cut stops at h²
 
 The polar dual is
 
-$$
-P^\circ=\left\{\mathbf y:\mathbf v_i^\top\mathbf y\le1,\ i=1,\ldots,M\right\}
-=\operatorname{conv}\left\{\frac{\mathbf n_f}{h}\right\}_{f=1}^{N}.
-$$
+```math
+\begin{aligned}
+P^\circ
+&=\left\{\mathbf{y}:\mathbf{v}_i^\top\mathbf{y}\le1,\ i=1,\ldots,M\right\} \\
+&=\operatorname{conv}\left\{\frac{\mathbf{n}_f}{h}\right\}_{f=1}^{N}.
+\end{aligned}
+```
 
-At cutting-plane distance $d=h^2$, the new half-spaces enclose
+At cutting-plane distance $`d=h^2`$, the new half-spaces enclose
 
-$$
-h^2P^\circ=\operatorname{conv}\{h\mathbf n_f\}_{f=1}^{N}\subseteq P,
-\qquad K(1)=h^2P^\circ.
-$$
+```math
+\begin{aligned}
+h^2P^\circ&=\operatorname{conv}\{h\mathbf{n}_f\}_{f=1}^{N}\subseteq P, \\
+K(1)&=h^2P^\circ.
+\end{aligned}
+```
 
-The inclusion follows from $\mathbf n_g^\top(h\mathbf n_f)\le h$ for unit normals. Thus the original face constraints become redundant, and the result is exactly the regular dual. Its unscaled circumradius is $h$.
+The inclusion follows from $`\mathbf{n}_g^\top(h\mathbf{n}_f)\le h`$ for unit normals. Thus the original face constraints become redundant, and the result is exactly the regular dual. Its unscaled circumradius is $`h`$.
 
-| Initial solid | Exact stop distance $h^2$ |
+| Initial solid | Exact stop distance h² |
 | --- | --- |
-| Tetrahedron | $1/9$ |
-| Cube | $1/3$ |
-| Dodecahedron | $(5+2\sqrt5)/15$ |
+| Tetrahedron | 1/9 |
+| Cube | 1/3 |
+| Dodecahedron | (5 + 2√5) / 15 |
 
 The endpoint comes from geometry, rather than an area threshold or a visual approximation.
 
@@ -90,19 +94,23 @@ The endpoint comes from geometry, rather than an area threshold or a visual appr
 
 The default quintic easing curve is
 
-$$
-E(u)=6u^5-15u^4+10u^3,
-\qquad d(u)=1-(1-h^2)E(u).
-$$
+```math
+\begin{aligned}
+E(u)&=6u^5-15u^4+10u^3, \\
+d(u)&=1-(1-h^2)E(u).
+\end{aligned}
+```
 
-Its derivative is $E'(u)=30u^2(1-u)^2$, so
+Its derivative is $`E'(u)=30u^2(1-u)^2`$, so
 
-$$
-E(0)=0,\quad E(1)=1,\quad
-E'(0)=E'(1)=E''(0)=E''(1)=0.
-$$
+```math
+\begin{aligned}
+E(0)&=0,\qquad E(1)=1, \\
+E'(0)&=E'(1)=E''(0)=E''(1)=0.
+\end{aligned}
+```
 
-The target motion starts and stops with zero velocity and acceleration. One easing curve spans the entire cut; a geometric topology boundary at progress $s_b$ is scheduled at clock fraction $E^{-1}(s_b)$. This keeps intermediate topology changes moving through the same speed profile.
+The target motion starts and stops with zero velocity and acceleration. One easing curve spans the entire cut; a geometric topology boundary at progress $`s_b`$ is scheduled at clock fraction $`E^{-1}(s_b)`$. This keeps intermediate topology changes moving through the same speed profile.
 
 Set `cutEasing` to `"linear"` for constant plane speed. SVG paths approximate the target motion with sampled linear interpolation.
 
@@ -110,19 +118,21 @@ Set `cutEasing` to `"linear"` for constant plane speed. SVG paths approximate th
 
 To keep the solid from shrinking, normalize each intermediate vertex by the current circumradius:
 
-$$
-r(u)=\max_{\mathbf x\in\operatorname{vert}K(u)}\|\mathbf x\|_2,
-\qquad \widehat{\mathbf x}=\frac{\mathbf x}{r(u)}.
-$$
+```math
+\begin{aligned}
+r(u)&=\max_{\mathbf{x}\in\operatorname{vert}K(u)}\lVert\mathbf{x}\rVert_2, \\
+\widehat{\mathbf{x}}&=\frac{\mathbf{x}}{r(u)}.
+\end{aligned}
+```
 
-The normalized solid is rotated about the configured axis and projected orthographically. Over a full loop of duration $T=2(\tau+\delta)$,
+The normalized solid is rotated about the configured axis and projected orthographically. Over a full loop of duration $`T=2(\tau+\delta)`$,
 
-$$
+```math
 \theta(t)=2\pi k\,\frac{t}{T},
-\qquad k\in\mathbb Z\setminus\{0\}.
-$$
+\qquad k\in\mathbb{Z}\setminus\{0\}.
+```
 
-Here $\tau$ is the cutting duration, $\delta$ the endpoint hold, and $k$ the number of turns. Integer turns restore the orientation at the loop boundary. Lighting follows the rotated face normals; occluded edges are dashed.
+Here $`\tau`$ is the cutting duration, $`\delta`$ the endpoint hold, and $`k`$ the number of turns. Integer turns restore the orientation at the loop boundary. Lighting follows the rotated face normals; occluded edges are dashed.
 
 ## Configuration
 

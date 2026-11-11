@@ -44,45 +44,49 @@ npm run generate
 
 ### 1. 用半空间交集表示多面体
 
-将凸正多面体 $P$ 的中心置于原点，并把外接球半径归一化为 $1$。记单位顶点向量为 $\mathbf v_i$，各面的外向单位法向量为 $\mathbf n_f$，内切球半径为 $h$，则
+将凸正多面体 $`P`$ 的中心置于原点，并把外接球半径归一化为 $`1`$。记单位顶点向量为 $`\mathbf{v}_i`$，各面的外向单位法向量为 $`\mathbf{n}_f`$，内切球半径为 $`h`$，则
 
-$$
-P=\bigcap_{f=1}^{N}\left\{\mathbf x\in\mathbb R^3:\mathbf n_f^\top\mathbf x\le h\right\}.
-$$
+```math
+P=\bigcap_{f=1}^{N}\left\{\mathbf{x}\in\mathbb{R}^3:\mathbf{n}_f^\top\mathbf{x}\le h\right\}.
+```
 
 每个顶点对应一个垂直于其半径的切割平面。平面从顶点出发，始终保留包含中心的半空间，剩余实体为
 
-$$
+```math
 K(u)=P\cap\bigcap_{i=1}^{M}
-\left\{\mathbf x:\mathbf v_i^\top\mathbf x\le d(u)\right\},
-\qquad 0\le u\le1.
-$$
+\left\{\mathbf{x}:\mathbf{v}_i^\top\mathbf{x}\le d(u)\right\}.
+```
 
-这里 $u$ 是**整次切割**经过的时间比例，不包含端点停留。
+这里 $`u`$ 是**整次切割**经过的时间比例，满足 $`0\le u\le1`$，不包含端点停留。
 
-### 2. 为什么在 $h^2$ 处停止？
+### 2. 为什么在 h² 处停止？
 
 极对偶定义为
 
-$$
-P^\circ=\left\{\mathbf y:\mathbf v_i^\top\mathbf y\le1,\ i=1,\ldots,M\right\}
-=\operatorname{conv}\left\{\frac{\mathbf n_f}{h}\right\}_{f=1}^{N}.
-$$
+```math
+\begin{aligned}
+P^\circ
+&=\left\{\mathbf{y}:\mathbf{v}_i^\top\mathbf{y}\le1,\ i=1,\ldots,M\right\} \\
+&=\operatorname{conv}\left\{\frac{\mathbf{n}_f}{h}\right\}_{f=1}^{N}.
+\end{aligned}
+```
 
-其中 $\operatorname{conv}$ 表示凸包。当切割平面到中心的距离为 $d=h^2$ 时，新半空间围成
+其中 $`\operatorname{conv}`$ 表示凸包。当切割平面到中心的距离为 $`d=h^2`$ 时，新半空间围成
 
-$$
-h^2P^\circ=\operatorname{conv}\{h\mathbf n_f\}_{f=1}^{N}\subseteq P,
-\qquad K(1)=h^2P^\circ.
-$$
+```math
+\begin{aligned}
+h^2P^\circ&=\operatorname{conv}\{h\mathbf{n}_f\}_{f=1}^{N}\subseteq P, \\
+K(1)&=h^2P^\circ.
+\end{aligned}
+```
 
-因为法向量均为单位向量，所以 $\mathbf n_g^\top(h\mathbf n_f)\le h$，上述包含关系成立。此时原有面的约束已经冗余，剩余实体恰好是正多面体的对偶，未放大的外接球半径为 $h$。
+因为法向量均为单位向量，所以 $`\mathbf{n}_g^\top(h\mathbf{n}_f)\le h`$，上述包含关系成立。此时原有面的约束已经冗余，剩余实体恰好是正多面体的对偶，未放大的外接球半径为 $`h`$。
 
-| 初始多面体 | 精确停止距离 $h^2$ |
+| 初始多面体 | 精确停止距离 h² |
 | --- | --- |
-| 四面体 | $1/9$ |
-| 立方体 | $1/3$ |
-| 十二面体 | $(5+2\sqrt5)/15$ |
+| 四面体 | 1/9 |
+| 立方体 | 1/3 |
+| 十二面体 | (5 + 2√5) / 15 |
 
 因此，终点由几何关系确定，无需用面面积阈值或画面近似来判断。
 
@@ -90,19 +94,23 @@ $$
 
 默认使用五次缓动曲线：
 
-$$
-E(u)=6u^5-15u^4+10u^3,
-\qquad d(u)=1-(1-h^2)E(u).
-$$
+```math
+\begin{aligned}
+E(u)&=6u^5-15u^4+10u^3, \\
+d(u)&=1-(1-h^2)E(u).
+\end{aligned}
+```
 
-它的导数为 $E'(u)=30u^2(1-u)^2$，因此
+它的导数为 $`E'(u)=30u^2(1-u)^2`$，因此
 
-$$
-E(0)=0,\quad E(1)=1,\quad
-E'(0)=E'(1)=E''(0)=E''(1)=0.
-$$
+```math
+\begin{aligned}
+E(0)&=0,\qquad E(1)=1, \\
+E'(0)&=E'(1)=E''(0)=E''(1)=0.
+\end{aligned}
+```
 
-理想切割轨迹在起点和终点的速度、加速度都为零。整次切割使用同一条缓动曲线；几何拓扑在进度 $s_b$ 处发生变化时，对应的时钟比例为 $E^{-1}(s_b)$，使中途换面仍沿同一速度曲线衔接。
+理想切割轨迹在起点和终点的速度、加速度都为零。整次切割使用同一条缓动曲线；几何拓扑在进度 $`s_b`$ 处发生变化时，对应的时钟比例为 $`E^{-1}(s_b)`$，使中途换面仍沿同一速度曲线衔接。
 
 将 `cutEasing` 设为 `"linear"` 可以使用恒定平面速度。SVG 路径通过采样和线性插值近似上述连续轨迹。
 
@@ -110,19 +118,21 @@ $$
 
 为避免越切越小，每个中间顶点都按当前外接球半径归一化：
 
-$$
-r(u)=\max_{\mathbf x\in\operatorname{vert}K(u)}\|\mathbf x\|_2,
-\qquad \widehat{\mathbf x}=\frac{\mathbf x}{r(u)}.
-$$
+```math
+\begin{aligned}
+r(u)&=\max_{\mathbf{x}\in\operatorname{vert}K(u)}\lVert\mathbf{x}\rVert_2, \\
+\widehat{\mathbf{x}}&=\frac{\mathbf{x}}{r(u)}.
+\end{aligned}
+```
 
-其中 $\operatorname{vert}K(u)$ 表示中间实体的顶点集合，$\|\cdot\|_2$ 表示欧氏长度。归一化后的实体绕配置的轴旋转，再做正交投影。完整周期为 $T=2(\tau+\delta)$ 时，
+其中 $`\operatorname{vert}K(u)`$ 表示中间实体的顶点集合，$`\lVert\cdot\rVert_2`$ 表示欧氏长度。归一化后的实体绕配置的轴旋转，再做正交投影。完整周期为 $`T=2(\tau+\delta)`$ 时，
 
-$$
+```math
 \theta(t)=2\pi k\,\frac{t}{T},
-\qquad k\in\mathbb Z\setminus\{0\}.
-$$
+\qquad k\in\mathbb{Z}\setminus\{0\}.
+```
 
-$\tau$ 是每次切割时长，$\delta$ 是端点停留时长，$k$ 是每周期圈数。整数圈保证循环时朝向恢复；光照跟随旋转后的面法向量更新，被遮挡的棱使用虚线。
+$`\tau`$ 是每次切割时长，$`\delta`$ 是端点停留时长，$`k`$ 是每周期圈数。整数圈保证循环时朝向恢复；光照跟随旋转后的面法向量更新，被遮挡的棱使用虚线。
 
 ## 配置
 
