@@ -1,0 +1,10 @@
+{
+  "name": "polydual",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "generate": "node src/generate.ts",
+    "test": "node --test tests/*.test.ts"
+  }
+}
