@@ -140,10 +140,27 @@ test("CLI: custom config generates only enabled files and rejects invalid config
   const entry = fileURLToPath(new URL("../src/generate.ts", import.meta.url));
   const result = spawnSync(process.execPath, [entry, "--config", file, "--seconds", "2", "--size", "800"], { cwd: dir, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(await readdir(resolve(dir, "output")), ["D3_N4_M4.svg"]);
-  const svg = await readFile(resolve(dir, "output/D3_N4_M4.svg"), "utf8");
-  assert.match(svg, /width="800"/);
-  assert.match(svg, /dur="5.6s"/);
+  assert.deepEqual((await readdir(resolve(dir, "output"))).sort(), ["dark", "light"]);
+  const variants: string[] = [];
+  for (const theme of ["light", "dark"] as const) {
+    assert.deepEqual(await readdir(resolve(dir, "output", theme)), ["D3_N4_M4.svg"]);
+    const svg = await readFile(resolve(dir, "output", theme, "D3_N4_M4.svg"), "utf8");
+    assert.match(svg, /width="800"/);
+    assert.match(svg, /dur="5.6s"/);
+    assert.doesNotMatch(svg, /@media|prefers-color-scheme/);
+    assert.ok(svg.includes(`color:${c.defaults.colors[theme].fill};stroke:${c.defaults.colors[theme].stroke}`));
+    assert.ok(svg.includes(`.polydual-dual{color:${c.defaults.colors[theme].dualFill}}`));
+    variants.push(svg.replace(/<style>.*?<\/style>/s, ""));
+  }
+  assert.equal(variants[0], variants[1], "theme variants share identical geometry and timing");
+  for (const mode of ["light", "dark"] as const) {
+    c.defaults.colors.mode = mode; c.out = `only-${mode}`;
+    await writeFile(file, JSON.stringify(c));
+    const fixed = spawnSync(process.execPath, [entry, "--config", file], { cwd: dir, encoding: "utf8" });
+    assert.equal(fixed.status, 0, fixed.stderr);
+    assert.deepEqual(await readdir(resolve(dir, c.out)), [mode]);
+    assert.deepEqual(await readdir(resolve(dir, c.out, mode)), ["D3_N4_M4.svg"]);
+  }
   c.defaults.view = [0, 0, 0]; c.out = "must-not-exist";
   await writeFile(file, JSON.stringify(c));
   const bad = spawnSync(process.execPath, [entry, "--config", file], { cwd: dir, encoding: "utf8" });

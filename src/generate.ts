@@ -17,10 +17,17 @@ try {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) { console.log(usage); process.exit(0); }
   const { directory, jobs } = await loadConfig(args.config, args.overrides, args.out);
-  const outputs = jobs.map(({ item, options }) => ({ name: artifactName(item.solid), svg: renderSVG(item, options) }));
-  await mkdir(directory, { recursive: true });
-  for (const { name, svg } of outputs) {
-    const file = resolve(directory, `${name}.svg`);
+  const outputs = jobs.flatMap(({ item, options }) => {
+    const themes = options.colors.mode === "auto" ? ["light", "dark"] as const : [options.colors.mode];
+    return themes.map(theme => ({
+      theme, name: artifactName(item.solid),
+      svg: renderSVG(item, { ...options, colors: { ...options.colors, mode: theme } }),
+    }));
+  });
+  for (const { theme, name, svg } of outputs) {
+    const themeDirectory = resolve(directory, theme);
+    await mkdir(themeDirectory, { recursive: true });
+    const file = resolve(themeDirectory, `${name}.svg`);
     await writeFile(file, svg);
     console.log(`已生成 ${file}`);
   }

@@ -5,9 +5,11 @@
 <p align="center"><a href="README.md">English</a> · <strong>简体中文</strong></p>
 
 <p align="center">
-  <a href="output/D3_N6_M8.svg">
-    <img src="output/D3_N6_M8.svg" width="520" alt="旋转的立方体被连续切割为八面体，再通过新的切割过程变回立方体。" />
-  </a>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="output/dark/D3_N12_M20.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="output/light/D3_N12_M20.svg" />
+    <img src="output/light/D3_N12_M20.svg" width="520" alt="旋转的正十二面体被连续切割为正二十面体，再通过新的切割过程变回正十二面体。" />
+  </picture>
 </p>
 
 <p align="center">同步切割 · 平滑启停 · 遮挡虚线 · 明暗主题自适应</p>
@@ -22,7 +24,7 @@
 npm run generate
 ```
 
-用支持 SVG/SMIL 的浏览器打开生成文件即可播放。每个 SVG 都可以独立使用：背景透明、没有可见文字，不依赖脚本或外部资源。
+默认在 `output/light/` 和 `output/dark/` 下各生成三组固定主题的动画；两个目录中的文件名相同。用支持 SVG/SMIL 的浏览器打开对应版本即可播放。每个 SVG 都可以独立使用：背景透明、没有可见文字，不依赖脚本或外部资源。
 
 默认一轮 **11.6 秒**：两次各 5 秒的切割，以及每个端点 0.8 秒的停留。停留时只暂停切割，物体继续旋转。
 
@@ -32,9 +34,9 @@ npm run generate
 
 | 初始多面体 → 对偶 → 初始多面体 | 面数 / 顶点数 | 打开动画 |
 | --- | --- | --- |
-| 四面体 → 对偶四面体 → 四面体 | 4 / 4 ↔ 4 / 4 | [D3_N4_M4.svg](output/D3_N4_M4.svg) |
-| 立方体 → 八面体 → 立方体 | 6 / 8 ↔ 8 / 6 | [D3_N6_M8.svg](output/D3_N6_M8.svg) |
-| 十二面体 → 二十面体 → 十二面体 | 12 / 20 ↔ 20 / 12 | [D3_N12_M20.svg](output/D3_N12_M20.svg) |
+| 四面体 → 对偶四面体 → 四面体 | 4 / 4 ↔ 4 / 4 | [明亮](output/light/D3_N4_M4.svg) · [暗黑](output/dark/D3_N4_M4.svg) |
+| 立方体 → 八面体 → 立方体 | 6 / 8 ↔ 8 / 6 | [明亮](output/light/D3_N6_M8.svg) · [暗黑](output/dark/D3_N6_M8.svg) |
+| 十二面体 → 二十面体 → 十二面体 | 12 / 20 ↔ 20 / 12 | [明亮](output/light/D3_N12_M20.svg) · [暗黑](output/dark/D3_N12_M20.svg) |
 
 绿色表示初始多面体的面，红色表示对偶的面。原有面保持颜色、逐渐缩小，新切面以另一种颜色长大；返程根据新的顶点重新切割。
 
@@ -157,7 +159,7 @@ $\tau$ 是每次切割时长，$\delta$ 是端点停留时长，$k$ 是每周期
 | `size` | SVG 宽高像素，正整数 | `640` |
 | `view` | 从中心指向观察者的方向 | `[4, -0.9, 2]` |
 | `light` | 从中心指向固定世界光源的方向 | `[-3, 5, 6]` |
-| `colors.mode` | `auto`、`light` 或 `dark` | `auto` |
+| `colors.mode` | `auto` 生成两套，`light` 或 `dark` 只生成指定主题 | `auto` |
 | `colors.light.fill` | 明亮主题下初始多面体的基色 | `#5faf7d` |
 | `colors.light.dualFill` | 明亮主题下对偶多面体的基色 | `#d96b6b` |
 | `colors.light.stroke` | 明亮主题下的棱线色 | `#33473d` |
@@ -177,7 +179,7 @@ $\tau$ 是每次切割时长，$\delta$ 是端点停留时长，$k$ 是每周期
 
 默认旋转轴相对竖直方向倾斜约 23°，相机仰视约 11°。`view[1]` 控制观察高度：负值仰视，正值俯视。
 
-`auto` 通过 `prefers-color-scheme` 选择明暗配色。嵌入网页时，宿主的 `color-scheme` 可以影响选择；不会读取周围背景像素。需要固定主题时可使用 `light` 或 `dark`。
+`auto` 分别导出明亮和暗黑两个固定配色的版本，存入输出目录的 `light/` 和 `dark/` 子目录。`light` 或 `dark` 仅导出对应子目录。SVG 本身不再检测主题；README 通过 `<picture>` 的 `prefers-color-scheme` 媒体查询选择文件，不支持时回退到明亮版本。
 
 </details>
 

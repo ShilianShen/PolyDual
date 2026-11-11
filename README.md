@@ -5,9 +5,11 @@
 <p align="center"><strong>English</strong> · <a href="README_CN.md">简体中文</a></p>
 
 <p align="center">
-  <a href="output/D3_N6_M8.svg">
-    <img src="output/D3_N6_M8.svg" width="520" alt="A rotating cube is continuously clipped into an octahedron and back." />
-  </a>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="output/dark/D3_N12_M20.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="output/light/D3_N12_M20.svg" />
+    <img src="output/light/D3_N12_M20.svg" width="520" alt="A rotating dodecahedron is continuously clipped into an icosahedron and back." />
+  </picture>
 </p>
 
 <p align="center">Synchronized cuts · Smooth starts and stops · Hidden edges · Automatic light/dark colors</p>
@@ -22,7 +24,7 @@ Use **Node.js 24+**. No package installation is required.
 npm run generate
 ```
 
-Open any generated SVG in a browser with SVG/SMIL support. Each file is self-contained: transparent background, no visible labels, no scripts, and no external assets.
+By default, each of the three animations is generated in both `output/light/` and `output/dark/`, with matching filenames. Open the desired version in a browser with SVG/SMIL support. Each file is self-contained: transparent background, no visible labels, no scripts, and no external assets.
 
 The default loop lasts **11.6 seconds**: two 5-second cuts and a 0.8-second hold at each endpoint. The solid keeps rotating during holds.
 
@@ -32,9 +34,9 @@ For an initial solid with `N` faces and `M` vertices, the dual has `M` faces and
 
 | Initial solid → dual → initial solid | Faces / vertices | Open animation |
 | --- | --- | --- |
-| Tetrahedron → dual tetrahedron → tetrahedron | 4 / 4 ↔ 4 / 4 | [D3_N4_M4.svg](output/D3_N4_M4.svg) |
-| Cube → octahedron → cube | 6 / 8 ↔ 8 / 6 | [D3_N6_M8.svg](output/D3_N6_M8.svg) |
-| Dodecahedron → icosahedron → dodecahedron | 12 / 20 ↔ 20 / 12 | [D3_N12_M20.svg](output/D3_N12_M20.svg) |
+| Tetrahedron → dual tetrahedron → tetrahedron | 4 / 4 ↔ 4 / 4 | [Light](output/light/D3_N4_M4.svg) · [Dark](output/dark/D3_N4_M4.svg) |
+| Cube → octahedron → cube | 6 / 8 ↔ 8 / 6 | [Light](output/light/D3_N6_M8.svg) · [Dark](output/dark/D3_N6_M8.svg) |
+| Dodecahedron → icosahedron → dodecahedron | 12 / 20 ↔ 20 / 12 | [Light](output/light/D3_N12_M20.svg) · [Dark](output/dark/D3_N12_M20.svg) |
 
 Green identifies the initial solid's faces; red identifies its dual's faces. Existing faces keep their color as they shrink, while newly cut faces grow in the other color. The return trip is computed as another cut.
 
@@ -157,7 +159,7 @@ All fields under `defaults` are required. Unknown fields and invalid values prod
 | `size` | SVG width and height in pixels; positive integer | `640` |
 | `view` | Direction from center to viewer | `[4, -0.9, 2]` |
 | `light` | Direction from center to fixed world-space light | `[-3, 5, 6]` |
-| `colors.mode` | `auto`, `light`, or `dark` | `auto` |
+| `colors.mode` | `auto` exports both themes; `light` or `dark` exports only that theme | `auto` |
 | `colors.light.fill` | Initial-solid color in light mode | `#5faf7d` |
 | `colors.light.dualFill` | Dual-solid color in light mode | `#d96b6b` |
 | `colors.light.stroke` | Edge color in light mode | `#33473d` |
@@ -177,7 +179,7 @@ Vectors must be finite and nonzero; `view` cannot be parallel to the world Y axi
 
 The default axis is tilted about 23° from vertical, with an approximately 11° upward camera view. `view[1]` controls camera height: negative looks upward, positive looks downward.
 
-`auto` selects light/dark colors using `prefers-color-scheme`. For an embedded image, the host page's `color-scheme` can affect this selection; arbitrary surrounding background pixels are not sampled. Use a fixed mode when needed.
+`auto` exports two fixed-palette versions into the output directory's `light/` and `dark/` subdirectories. `light` or `dark` exports only its corresponding subdirectory. The SVGs do not detect themes internally; the README uses `<picture>` with `prefers-color-scheme` to select a file, falling back to the light version when unsupported.
 
 </details>
 
