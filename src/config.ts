@@ -7,8 +7,9 @@ export type Options = {
   seconds: number; hold: number; samples: number; size: number;
   view: Vec; light: Vec; hue: number; saturation: number;
   background: string; stroke: string; strokeWidth: number;
+  rotation: { enabled: boolean; axis: Vec; turns: number };
 };
-const optionKeys = ["seconds", "hold", "samples", "size", "view", "light", "hue", "saturation", "background", "stroke", "strokeWidth"];
+const optionKeys = ["seconds", "hold", "samples", "size", "view", "light", "hue", "saturation", "background", "stroke", "strokeWidth", "rotation"];
 
 function object(value: unknown, path: string): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${path} 必须是对象`);
@@ -46,6 +47,11 @@ export function validateOptions(value: unknown, path: string): Options {
   if ((v.saturation as number) < 0 || (v.saturation as number) > 100) throw new Error(`${path}.saturation 必须在 0 到 100 之间`);
   if (!Number.isFinite(2 * ((v.seconds as number) + (v.hold as number)))) throw new Error(`${path} 的动画周期过大`);
   const view = vector(v.view, `${path}.view`), light = vector(v.light, `${path}.light`);
+  const rotation = object(v.rotation, `${path}.rotation`);
+  keys(rotation, ["enabled", "axis", "turns"], `${path}.rotation`);
+  if (typeof rotation.enabled !== "boolean") throw new Error(`${path}.rotation.enabled 必须是布尔值`);
+  if (!Number.isSafeInteger(rotation.turns) || rotation.turns === 0) throw new Error(`${path}.rotation.turns 必须是非零整数，以保证循环衔接`);
+  const axis = vector(rotation.axis, `${path}.rotation.axis`);
   if (length(cross([0, 1, 0], unit(view))) < 1e-8) throw new Error(`${path}.view 不能与竖直方向 [0, 1, 0] 平行`);
   for (const key of ["background", "stroke"]) {
     const color = string(v[key], `${path}.${key}`);
@@ -53,7 +59,7 @@ export function validateOptions(value: unknown, path: string): Options {
       throw new Error(`${path}.${key} 必须是十六进制颜色或 transparent`);
     }
   }
-  return { ...v, view, light } as Options;
+  return { ...v, view, light, rotation: { enabled: rotation.enabled, axis, turns: rotation.turns as number } } as Options;
 }
 
 export function parseArgs(args: string[]) {
@@ -77,6 +83,15 @@ export function parseArgs(args: string[]) {
   return result;
 }
 
+function mergeOptions(base: Options, overrides: Record<string, unknown>, path: string): Record<string, unknown> {
+  return {
+    ...base, ...overrides,
+    rotation: Object.hasOwn(overrides, "rotation")
+      ? { ...base.rotation, ...object(overrides.rotation, `${path}.rotation`) }
+      : base.rotation,
+  };
+}
+
 export async function loadConfig(file: string, overrides: Partial<Options> = {}, out?: string) {
   const absolute = resolve(file);
   let data: unknown;
@@ -95,8 +110,8 @@ export async function loadConfig(file: string, overrides: Partial<Options> = {},
     if (typeof entry.enabled !== "boolean") throw new Error(`animations.${id}.enabled 必须是布尔值`);
     const { enabled, ...local } = entry;
     // Validate file contents even when a CLI override or enabled=false would mask an error.
-    validateOptions({ ...defaults, ...local }, `animations.${id}`);
-    const options = validateOptions({ ...defaults, ...local, ...overrides }, `animations.${id}`);
+    const configured = validateOptions(mergeOptions(defaults, local, `animations.${id}`), `animations.${id}`);
+    const options = validateOptions(mergeOptions(configured, overrides, `animations.${id}`), `animations.${id}`);
     return enabled ? [{ item: solids.find(s => s.id === id)!, options }] : [];
   });
   if (!jobs.length) throw new Error("animations 中至少需要启用一组动画");

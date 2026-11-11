@@ -11,7 +11,12 @@
     "saturation": 58,
     "background": "#f5f8fb",
     "stroke": "#142c3a",
-    "strokeWidth": 1.25
+    "strokeWidth": 1.25,
+    "rotation": {
+      "enabled": true,
+      "axis": [0, 1, 0],
+      "turns": 1
+    }
   },
   "animations": {
     "tetrahedron": {

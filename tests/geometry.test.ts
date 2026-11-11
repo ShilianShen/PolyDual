@@ -82,7 +82,7 @@ for (const [index, item] of initialSolids().entries()) {
   });
 
   test(`${item.id}: SMIL paths have matching commands and strictly increasing key times`, () => {
-    for (const options of [defaults, { ...defaults, hold: 0 }]) {
+    for (const options of [defaults, { ...defaults, hold: 0 }, { ...defaults, rotation: { ...defaults.rotation, enabled: true } }]) {
       const svg = renderSVG(item, options);
       assert.ok(!svg.includes("NaN") && !svg.includes("Infinity") && !svg.includes("<script"));
       for (const match of svg.matchAll(/<animate\b([^>]+)\/>/g)) {
